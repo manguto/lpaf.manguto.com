@@ -14,4 +14,24 @@ final class RoleRepository extends CsvRepository
     {
         return ['id', 'name', 'description', 'protected', 'created_at', 'updated_at'];
     }
+
+    public function forUser(string $userId): array
+    {
+        $roleIds = [];
+        foreach ($this->storage->read('user_roles.csv', ['user_id', 'role_id']) as $row) {
+            if (($row['user_id'] ?? '') === $userId) {
+                $roleIds[] = $row['role_id'];
+            }
+        }
+
+        $roles = [];
+        foreach ($this->all() as $role) {
+            if (in_array($role['id'], $roleIds, true)) {
+                $roles[] = $role;
+            }
+        }
+
+        return $roles;
+    }
 }
+

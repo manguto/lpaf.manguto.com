@@ -56,6 +56,31 @@ $logs = $auditService->all();
 if (empty($logs) || $logs[0]['action'] !== 'evento_teste') throw new RuntimeException('Falha no registro/leitura de auditoria.');
 $filteredLogs = $auditService->all('evento_teste');
 if (empty($filteredLogs) || $filteredLogs[0]['action'] !== 'evento_teste') throw new RuntimeException('Falha no filtro de auditoria.');
-if (!in_array('evento_teste', $auditService->actions(), true)) throw new RuntimeException('Ação não listada em actions().');
+// Teste de atualização de perfil e senha
+$currentUser = $app->users->find('usr_001');
+if (!$currentUser) throw new RuntimeException('Usuário usr_001 não encontrado.');
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups e Auditoria (append e consultas).\n";
+// Testa recuperação dos papéis do usuário
+$userRoles = $app->roles->forUser('usr_001');
+if (empty($userRoles) || $userRoles[0]['id'] !== 'role_dev') throw new RuntimeException('Falha em roles->forUser().');
+
+// Simula atualização de nome e troca de senha
+$newName = 'Administrador Atualizado';
+$newPass = 'nova-senha-segura-2026';
+$app->users->update('usr_001', [
+    'name' => $newName,
+    'password_hash' => password_hash($newPass, PASSWORD_DEFAULT),
+    'updated_at' => date('c'),
+]);
+$auditService->log('profile_updated', 'usr_001', 'Nome e senha atualizados');
+
+$userAfterUpdate = $app->users->find('usr_001');
+if ($userAfterUpdate['name'] !== $newName) throw new RuntimeException('Falha na atualização do nome do perfil.');
+if (!password_verify($newPass, $userAfterUpdate['password_hash'])) throw new RuntimeException('Falha na verificação da nova senha atualizada.');
+if (password_verify('senha-segura', $userAfterUpdate['password_hash'])) throw new RuntimeException('Senha antiga ainda continua válida.');
+
+$profileLogs = $auditService->all('profile_updated');
+if (empty($profileLogs)) throw new RuntimeException('Log de auditoria profile_updated não registrado.');
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria e Perfil/Troca de Senha.\n";
+

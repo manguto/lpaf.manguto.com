@@ -1,6 +1,7 @@
 <?php
 
 use App\Controllers\AuthController;
+use App\Controllers\ProfileController;
 use App\Controllers\PublicController;
 use App\Controllers\SetupController;
 use App\Core\Router;
@@ -16,4 +17,6 @@ return static function (Router $router): void {
     $router->get('/setup', [SetupController::class, 'show']);
     $router->post('/setup', [SetupController::class, 'install'])->middleware(CsrfMiddleware::class);
     $router->get('/app', [PublicController::class, 'app'])->middleware(AuthMiddleware::class)->permission('dashboard.view');
+    $router->get('/profile', [ProfileController::class, 'show'])->middleware(AuthMiddleware::class)->permission('profile.edit');
+    $router->post('/profile', [ProfileController::class, 'update'])->middleware(AuthMiddleware::class)->middleware(CsrfMiddleware::class)->permission('profile.edit');
 };

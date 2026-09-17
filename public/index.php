@@ -23,6 +23,7 @@ if (!$app->installed() && $request->path() !== '/setup') Response::redirect('/se
 try {
     $router->dispatch($app);
 } catch (Throwable $exception) {
+    error_log((string) $exception);
     if ($config->get('app_debug')) {
         http_response_code(500);
         echo '<pre>' . e($exception) . '</pre>';

@@ -1002,7 +1002,7 @@ Status do roadmap:
 5. [x] Autenticação segura por sessões PHP com `password_hash()` e login estrito
 6. [x] Controle de acesso RBAC granular (`role_user`, `role_admin`, `role_dev`)
 7. [x] Persistência em arquivos CSV com travas `flock()` e escrita atômica
-8. [x] Administração básica (gestão de usuários e perfis de acesso)
+8. [x] Administração básica (gestão de usuários, perfis de acesso e perfil pessoal com troca de senha)
 9. [x] Dev-End consolidado (diagnóstico, backups com rollback/download e visualizador de logs)
 10. [ ] Motor de módulos isolados (`modules/`)
 11. [ ] Entity Builder

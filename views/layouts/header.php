@@ -33,11 +33,13 @@ if ($user && !empty($user['name'])) {
                     <a href="<?= url($app, '/dev') ?>">Dev-End</a>
                 <?php endif; ?>
                 <div class="user-profile-chip">
-                    <div class="user-avatar"><?= e($initials ?: 'U') ?></div>
-                    <div class="user-details">
-                        <span class="user-name"><?= e($user['name']) ?></span>
-                        <span class="user-role">@<?= e($user['username']) ?></span>
-                    </div>
+                    <a href="<?= url($app, '/profile') ?>" class="user-profile-link" title="Meu Perfil">
+                        <div class="user-avatar"><?= e($initials ?: 'U') ?></div>
+                        <div class="user-details">
+                            <span class="user-name"><?= e($user['name']) ?></span>
+                            <span class="user-role">@<?= e($user['username']) ?></span>
+                        </div>
+                    </a>
                     <form method="post" action="<?= url($app, '/logout') ?>" style="display:inline; background:transparent; border:0; padding:0; box-shadow:none; margin:0;">
                         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                         <button type="submit" class="btn btn-logout btn-sm">Sair</button>
