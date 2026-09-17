@@ -15,6 +15,7 @@ require dirname(__DIR__) . '/app/Helpers/functions.php';
 $config = new Config(dirname(__DIR__));
 Session::start();
 $request = new Request();
+Response::setBasePath($request->basePath());
 $app = new Application($config, new CsvStorage($config), $request);
 $router = new Router($request);
 foreach (['web.php', 'admin.php', 'dev.php'] as $file) (require dirname(__DIR__) . '/routes/' . $file)($router);

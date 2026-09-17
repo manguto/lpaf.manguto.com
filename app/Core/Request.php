@@ -15,9 +15,16 @@ final class Request
     public function path(): string
     {
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-        $base = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+        $base = $this->basePath();
         if ($base !== '' && $base !== '/' && str_starts_with($path, $base)) $path = substr($path, strlen($base));
         return '/' . trim($path, '/');
+    }
+    public function basePath(): string
+    {
+        $script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+        $directory = rtrim(str_replace('\\', '/', dirname($script)), '/');
+        if (basename($directory) === 'public') $directory = dirname($directory);
+        return $directory === '/' || $directory === '.' ? '' : $directory;
     }
     public function input(string $key, mixed $default = null): mixed
     {

@@ -3,6 +3,10 @@ function e(mixed $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
+function url(App\Core\Application $app, string $path = '/'): string
+{
+    return e($app->url($path));
+}
 function can(App\Core\Application $app, string $needed): bool
 {
     if (empty($_SESSION['user_id'])) return false;

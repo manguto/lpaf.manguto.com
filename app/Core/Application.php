@@ -23,6 +23,11 @@ final class Application
     {
         return $this->storage->exists('settings.csv') && $this->setting('installed') === '1';
     }
+    public function url(string $path = '/'): string
+    {
+        $path = '/' . ltrim($path, '/');
+        return $this->request->basePath() . $path;
+    }
     public function setting(string $key, mixed $default = null): mixed
     {
         foreach ($this->storage->read('settings.csv', ['key', 'value']) as $row) if ($row['key'] === $key) return $row['value'];

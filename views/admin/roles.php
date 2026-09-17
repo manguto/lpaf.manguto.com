@@ -1,5 +1,5 @@
 <h1>Perfis</h1>
-<p><a class="button" href="/admin/roles/create">Novo perfil</a></p>
+<p><a class="button" href="<?= url($app, '/admin/roles/create') ?>">Novo perfil</a></p>
 <table>
     <tr>
         <th>Nome</th>
@@ -8,6 +8,6 @@
     </tr><?php foreach ($roles as $role): ?><tr>
             <td><?= e($role['name']) ?></td>
             <td><?= e($role['id']) ?></td>
-            <td><a href="/admin/roles/<?= e($role['id']) ?>/edit">Editar</a></td>
+            <td><a href="<?= url($app, '/admin/roles/' . $role['id'] . '/edit') ?>">Editar</a></td>
         </tr><?php endforeach; ?>
 </table>
