@@ -986,6 +986,7 @@ Status do roadmap:
 10. [x] Motor de módulos isolados (`modules/`)
 11. [x] Entity Builder (assistente visual para criação e edição de entidades no Dev-End com salvaguardas e expansão de schema)
 12. [x] CRUD declarativo por metadados (persistência CSV dinâmica, renderização automática e integridade de dados)
+13. [x] Sistema de Design & Alto Contraste Global (identificação visual nítida de formulários, inputs com bordas e sombras definidas, rótulos destacados, checkboxes ampliados e tabelas contrastadas)
 
 ## 41. Contribuições
 
