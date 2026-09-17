@@ -41,6 +41,21 @@
                             <?php endif; ?>
                         <?php elseif ($type === 'select'): ?>
                             <span class="badge badge-gray"><?= e($val ?: '-') ?></span>
+                        <?php elseif ($type === 'relation'): ?>
+                            <?php
+                            $relData = $relationMaps[$key]['map'][$val] ?? null;
+                            $targetSlug = $relationMaps[$key]['target'] ?? '';
+                            ?>
+                            <?php if ($val !== '' && $relData !== null): ?>
+                                <a href="<?= url($app, '/app/' . $targetSlug . '/' . $val) ?>" style="font-weight: 700; color: var(--primary); text-decoration: none;">
+                                    <?= e($relData) ?>
+                                </a>
+                                <code style="margin-left: 0.35rem;"><?= e($val) ?></code>
+                            <?php elseif ($val !== ''): ?>
+                                <code><?= e($val) ?></code>
+                            <?php else: ?>
+                                <span class="muted">—</span>
+                            <?php endif; ?>
                         <?php elseif ($type === 'text'): ?>
                             <div style="white-space: pre-wrap;"><?= e($val ?: '-') ?></div>
                         <?php else: ?>

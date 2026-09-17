@@ -379,6 +379,19 @@ usr_001;role_user
 usr_001;role_admin
 ```
 
+### Relacionamentos 1:N Declarativos (Módulos & Entity Builder)
+
+O sistema conta com um motor completo de **Relacionamentos 1:N (Chaves Estrangeiras)** entre entidades:
+
+* **Armazenamento Seguro:** As entidades filhas gravam exclusivamente o identificador da entidade pai na coluna correspondente (ex: `cliente_id` armazenando `cli_001`), preservando a atomicidade e legibilidade direta do CSV;
+* **Definição Declarativa:** Campos do tipo `relation` no `module.php` declaram o módulo de destino (`target`) e o campo a ser exibido como rótulo (`display`);
+* **Seleção Visual no Entity Builder:** Ao configurar ou editar uma entidade no Dev-End, o tipo `🔗 Relação (Chave 1:N)` permite vincular o campo a qualquer outro módulo existente através de menu seletor inteligente;
+* **Formulários Dinâmicos:** As telas de criação e edição renderizam `<select>` populados dinamicamente com os registros da entidade pai (`Rótulo (ID)`) e oferecem atalho imediato para cadastro caso a entidade pai ainda esteja vazia;
+* **Exibição nas Listagens e Detalhes:** As tabelas de listagem (`/app/{slug}`) e detalhes (`show`) substituem os códigos brutos pelos nomes dos registros vinculados, com links diretos para a entidade relacionada;
+* **Integridade Referencial Dupla:**
+  - *No Salvamento:* Validação estrita impedindo o envio de chaves estrangeiras inexistentes;
+  - *Na Exclusão:* Bloqueio ativo de exclusão de registros pai que possuam vínculos ativos em outros módulos, emitindo alerta amigável e prevenindo a geração de registros órfãos.
+
 ## 16. Identificadores
 
 Preferir identificadores curtos e legíveis.
@@ -987,6 +1000,7 @@ Status do roadmap:
 11. [x] Entity Builder (assistente visual para criação e edição de entidades no Dev-End com salvaguardas e expansão de schema)
 12. [x] CRUD declarativo por metadados (persistência CSV dinâmica, renderização automática e integridade de dados)
 13. [x] Sistema de Design & Alto Contraste Global (identificação visual nítida de formulários, inputs com bordas e sombras definidas, rótulos destacados, checkboxes ampliados e tabelas contrastadas)
+14. [x] Relacionamentos entre Entidades (Chaves Estrangeiras 1:N no Entity Builder e CRUD, seleção dinâmica, integridade referencial com validação de existência e proteção ativa contra registros órfãos)
 
 ## 41. Contribuições
 
@@ -1020,4 +1034,4 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
    ```bash
    php tests/verify.php
    ```
-   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados e Entity Builder (criação, edição, expansão e reordenação de campos com integridade de dados).
+   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial).

@@ -41,6 +41,25 @@
                             </option>
                         <?php endforeach; ?>
                     </select>
+                <?php elseif ($type === 'relation'): ?>
+                    <?php 
+                    $relInfo = $relations[$key] ?? ['items' => [], 'target' => '', 'target_entity' => 'Registro']; 
+                    $relItems = $relInfo['items'] ?? [];
+                    ?>
+                    <select id="field_<?= e($key) ?>" name="<?= e($key) ?>" <?= $required ? 'required' : '' ?>>
+                        <option value="">Selecione um(a) <?= e($relInfo['target_entity']) ?>...</option>
+                        <?php foreach ($relItems as $relOpt): ?>
+                            <option value="<?= e($relOpt['id']) ?>" <?= $val === (string) $relOpt['id'] ? 'selected' : '' ?>>
+                                <?= e($relOpt['label']) ?> (<?= e($relOpt['id']) ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if (empty($relItems)): ?>
+                        <span class="muted" style="font-size: 0.775rem; display: block; margin-top: 0.35rem;">
+                            ⚠️ Nenhum(a) <strong><?= e($relInfo['target_entity']) ?></strong> cadastrado(a) ainda. 
+                            <a href="<?= url($app, '/app/' . $relInfo['target'] . '/create') ?>" target="_blank" style="color: var(--primary); font-weight: 600;">Cadastrar agora &rarr;</a>
+                        </span>
+                    <?php endif; ?>
                 <?php elseif ($type === 'text'): ?>
                     <textarea id="field_<?= e($key) ?>" name="<?= e($key) ?>" rows="4" <?= $required ? 'required' : '' ?>><?= e($val) ?></textarea>
                 <?php elseif ($type === 'date'): ?>

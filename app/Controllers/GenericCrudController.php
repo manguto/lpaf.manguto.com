@@ -29,11 +29,48 @@ final class GenericCrudController extends Controller
         return $module;
     }
 
+    private function resolveRelations(array $module): array
+    {
+        $relations = [];
+        foreach ($module['fields'] as $key => $f) {
+            if (($f['type'] ?? '') === 'relation') {
+                $targetSlug = $f['target'] ?? '';
+                $targetModule = $this->app->modules->get($targetSlug);
+                $targetRepo = $this->app->modules->repository($targetSlug);
+                $rows = $targetRepo ? $targetRepo->all() : [];
+                $displayField = $f['display'] ?? '';
+
+                $items = [];
+                foreach ($rows as $row) {
+                    $label = '';
+                    if ($displayField !== '' && isset($row[$displayField])) {
+                        $label = (string) $row[$displayField];
+                    } else {
+                        $label = (string) ($row['nome'] ?? $row['name'] ?? $row['title'] ?? $row['titulo'] ?? $row['descricao'] ?? $row['id']);
+                    }
+                    $items[] = [
+                        'id' => (string) ($row['id'] ?? ''),
+                        'label' => $label,
+                    ];
+                }
+
+                $relations[$key] = [
+                    'target' => $targetSlug,
+                    'target_entity' => $targetModule['entity'] ?? ucfirst($targetSlug),
+                    'items' => $items,
+                    'map' => array_column($items, 'label', 'id'),
+                ];
+            }
+        }
+        return $relations;
+    }
+
     public function index(Request $request, array $params): void
     {
         $module = $this->resolveModule($request, $params);
         $repo = $this->app->modules->repository($module['slug']);
         $items = $repo ? $repo->all() : [];
+        $relations = $this->resolveRelations($module);
 
         $query = trim((string) $request->input('q', ''));
         if ($query !== '') {
@@ -53,17 +90,20 @@ final class GenericCrudController extends Controller
             'module' => $module,
             'items' => $items,
             'query' => $query,
+            'relationMaps' => $relations,
         ]);
     }
 
     public function create(Request $request, array $params): void
     {
         $module = $this->resolveModule($request, $params);
+        $relations = $this->resolveRelations($module);
 
         $this->view('crud/form', [
             'module' => $module,
             'item' => null,
             'isEdit' => false,
+            'relations' => $relations,
         ]);
     }
 
@@ -88,6 +128,15 @@ final class GenericCrudController extends Controller
             if (!empty($config['required']) && ($val === null || $val === '')) {
                 Session::flash('error', "O campo '{$label}' é obrigatório.");
                 Response::redirect("/app/{$slug}/create");
+            }
+
+            if ($type === 'relation' && $val !== null && $val !== '') {
+                $targetSlug = $config['target'] ?? '';
+                $targetRepo = $this->app->modules->repository($targetSlug);
+                if (!$targetRepo || !$targetRepo->find((string) $val)) {
+                    Session::flash('error', "O valor selecionado para o campo '{$label}' não existe no módulo de destino.");
+                    Response::redirect("/app/{$slug}/create");
+                }
             }
 
             if (!empty($config['unique']) && $val !== null && $val !== '') {
@@ -129,9 +178,12 @@ final class GenericCrudController extends Controller
             Response::error(404, "Registro de {$module['entity']} não encontrado.");
         }
 
+        $relations = $this->resolveRelations($module);
+
         $this->view('crud/show', [
             'module' => $module,
             'item' => $item,
+            'relationMaps' => $relations,
         ]);
     }
 
@@ -146,10 +198,13 @@ final class GenericCrudController extends Controller
             Response::error(404, "Registro de {$module['entity']} não encontrado.");
         }
 
+        $relations = $this->resolveRelations($module);
+
         $this->view('crud/form', [
             'module' => $module,
             'item' => $item,
             'isEdit' => true,
+            'relations' => $relations,
         ]);
     }
 
@@ -182,6 +237,15 @@ final class GenericCrudController extends Controller
                 Response::redirect("/app/{$slug}/{$id}/edit");
             }
 
+            if ($type === 'relation' && $val !== null && $val !== '') {
+                $targetSlug = $config['target'] ?? '';
+                $targetRepo = $this->app->modules->repository($targetSlug);
+                if (!$targetRepo || !$targetRepo->find((string) $val)) {
+                    Session::flash('error', "O valor selecionado para o campo '{$label}' não existe no módulo de destino.");
+                    Response::redirect("/app/{$slug}/{$id}/edit");
+                }
+            }
+
             if (!empty($config['unique']) && $val !== null && $val !== '') {
                 $match = $repo->findBy($field, $val);
                 if ($match && ($match['id'] ?? '') !== $id) {
@@ -212,6 +276,25 @@ final class GenericCrudController extends Controller
         $repo = $this->app->modules->repository($module['slug']);
         $slug = $module['slug'];
         $id = $params['id'] ?? '';
+
+        // Proteção de Integridade Referencial (Impede exclusão se houver vínculos ativos)
+        $allModules = $this->app->modules->all();
+        foreach ($allModules as $otherSlug => $otherModule) {
+            foreach (($otherModule['fields'] ?? []) as $fKey => $fConfig) {
+                if (($fConfig['type'] ?? '') === 'relation' && ($fConfig['target'] ?? '') === $slug) {
+                    $otherRepo = $this->app->modules->repository($otherSlug);
+                    if ($otherRepo) {
+                        $referencing = array_filter($otherRepo->all(), fn($r) => ($r[$fKey] ?? '') === (string) $id);
+                        if (!empty($referencing)) {
+                            $count = count($referencing);
+                            Session::flash('error', "Não é possível excluir este registro pois ele possui {$count} vínculo(s) no módulo '{$otherModule['name']}'.");
+                            Response::redirect("/app/{$slug}");
+                            return;
+                        }
+                    }
+                }
+            }
+        }
 
         if ($repo) {
             $repo->delete($id);

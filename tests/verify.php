@@ -258,7 +258,126 @@ if (!$prjAfterReorder || $prjAfterReorder['orcamento'] !== '50000' || $prjAfterR
 unlink($builderDir . '/module.php');
 rmdir($builderDir);
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos e Entity Builder (criação, edição e reordenação de campos).\n";
+// =========================================================================
+// Teste de Relacionamento entre Entidades (Chave Estrangeira 1:N e Integridade Referencial)
+// =========================================================================
+$clientesDir = $app->config->get('root') . '/modules/clientes_test';
+if (!is_dir($clientesDir)) mkdir($clientesDir, 0775, true);
+$contratosDir = $app->config->get('root') . '/modules/contratos_test';
+if (!is_dir($contratosDir)) mkdir($contratosDir, 0775, true);
+
+// Entidade Pai: Clientes
+$clientesConfig = [
+    'name' => 'Clientes Teste',
+    'entity' => 'Cliente Teste',
+    'slug' => 'clientes_test',
+    'icon' => '🏢',
+    'prefix' => 'cli',
+    'storage' => 'clientes_test.csv',
+    'fields' => [
+        'nome' => ['type' => 'string', 'label' => 'Nome da Empresa', 'required' => true],
+    ],
+];
+file_put_contents($clientesDir . '/module.php', "<?php\nreturn " . var_export($clientesConfig, true) . ";\n");
+
+// Entidade Filha: Contratos (com campo relation para clientes_test)
+$contratosConfig = [
+    'name' => 'Contratos Teste',
+    'entity' => 'Contrato Teste',
+    'slug' => 'contratos_test',
+    'icon' => '📄',
+    'prefix' => 'cnt',
+    'storage' => 'contratos_test.csv',
+    'fields' => [
+        'numero' => ['type' => 'string', 'label' => 'Número', 'required' => true],
+        'cliente_id' => [
+            'type' => 'relation',
+            'label' => 'Cliente',
+            'target' => 'clientes_test',
+            'display' => 'nome',
+            'required' => true,
+        ],
+    ],
+];
+file_put_contents($contratosDir . '/module.php', "<?php\nreturn " . var_export($contratosConfig, true) . ";\n");
+
+$moduleManagerRel = new \App\Core\ModuleManager($app);
+$cliRepo = $moduleManagerRel->repository('clientes_test');
+$cntRepo = $moduleManagerRel->repository('contratos_test');
+
+// Insere registro no Pai
+$cli1 = $cliRepo->insert([
+    'id' => $cliRepo->nextId(),
+    'nome' => 'Manguto Corp',
+    'created_at' => date('c'),
+    'updated_at' => date('c'),
+]);
+if ($cli1['id'] !== 'cli_001') throw new RuntimeException('ID do cliente pai incorreto.');
+
+// Insere registro no Filho vinculado ao Pai
+$cnt1 = $cntRepo->insert([
+    'id' => $cntRepo->nextId(),
+    'numero' => 'CTR-2026-001',
+    'cliente_id' => $cli1['id'],
+    'created_at' => date('c'),
+    'updated_at' => date('c'),
+]);
+if ($cnt1['id'] !== 'cnt_001' || $cnt1['cliente_id'] !== 'cli_001') {
+    throw new RuntimeException('Vínculo de chave estrangeira no filho incorreto.');
+}
+
+// Testa integridade referencial: simula verificação de exclusão do pai
+$allMods = $moduleManagerRel->all();
+$hasReference = false;
+foreach ($allMods as $otherSlug => $otherMod) {
+    foreach ($otherMod['fields'] as $fKey => $fConf) {
+        if (($fConf['type'] ?? '') === 'relation' && ($fConf['target'] ?? '') === 'clientes_test') {
+            $otherRepo = $moduleManagerRel->repository($otherSlug);
+            $foundRefs = array_filter($otherRepo->all(), fn($r) => ($r[$fKey] ?? '') === 'cli_001');
+            if (!empty($foundRefs)) {
+                $hasReference = true;
+            }
+        }
+    }
+}
+if (!$hasReference) {
+    throw new RuntimeException('Falha na detecção de integridade referencial: exclusão do pai deveria ser bloqueada.');
+}
+
+// Remove o registro filho
+$cntRepo->delete('cnt_001');
+if ($cntRepo->find('cnt_001') !== null) {
+    throw new RuntimeException('Falha ao remover registro filho.');
+}
+
+// Agora verifica que o pai pode ser excluído
+$hasReferenceAfter = false;
+foreach ($allMods as $otherSlug => $otherMod) {
+    foreach ($otherMod['fields'] as $fKey => $fConf) {
+        if (($fConf['type'] ?? '') === 'relation' && ($fConf['target'] ?? '') === 'clientes_test') {
+            $otherRepo = $moduleManagerRel->repository($otherSlug);
+            $foundRefs = array_filter($otherRepo->all(), fn($r) => ($r[$fKey] ?? '') === 'cli_001');
+            if (!empty($foundRefs)) {
+                $hasReferenceAfter = true;
+            }
+        }
+    }
+}
+if ($hasReferenceAfter) {
+    throw new RuntimeException('Pai ainda considerado referenciado após exclusão do filho.');
+}
+$cliRepo->delete('cli_001');
+if ($cliRepo->find('cli_001') !== null) {
+    throw new RuntimeException('Falha ao remover pai após liberação de referências.');
+}
+
+// Limpeza dos módulos de teste de relacionamento
+unlink($clientesDir . '/module.php');
+rmdir($clientesDir);
+unlink($contratosDir . '/module.php');
+rmdir($contratosDir);
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial).\n";
 
 
 

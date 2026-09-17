@@ -102,7 +102,11 @@ final class DevController extends Controller
 
     public function entityBuilder(): void
     {
-        $this->view('dev/entity-builder', ['module' => null, 'isEdit' => false]);
+        $this->view('dev/entity-builder', [
+            'module' => null,
+            'isEdit' => false,
+            'allModules' => $this->app->modules->all(),
+        ]);
     }
 
     public function editEntity(Request $request, array $params): void
@@ -119,6 +123,7 @@ final class DevController extends Controller
         $this->view('dev/entity-builder', [
             'module' => $module,
             'isEdit' => true,
+            'allModules' => $modules,
         ]);
     }
 
@@ -151,7 +156,7 @@ final class DevController extends Controller
 
         $rawFields = (array) $request->input('fields', []);
         $fields = [];
-        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean'];
+        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean', 'relation'];
 
         if (!empty($rawFields)) {
             foreach ($rawFields as $fieldData) {
@@ -181,6 +186,21 @@ final class DevController extends Controller
                         $fieldConfig['options'] = $options ?: ['Opção 1', 'Opção 2'];
                     } else {
                         $fieldConfig['options'] = $currentConfig['fields'][$fName]['options'] ?? ['Opção 1', 'Opção 2'];
+                    }
+                }
+
+                if ($fType === 'relation') {
+                    $targetModule = trim((string) ($fieldData['relation_target'] ?? ''));
+                    if ($targetModule !== '') {
+                        $fieldConfig['target'] = $targetModule;
+                    } elseif (isset($currentConfig['fields'][$fName]['target'])) {
+                        $fieldConfig['target'] = $currentConfig['fields'][$fName]['target'];
+                    }
+                    $displayField = trim((string) ($fieldData['relation_display'] ?? ''));
+                    if ($displayField !== '') {
+                        $fieldConfig['display'] = $displayField;
+                    } elseif (isset($currentConfig['fields'][$fName]['display'])) {
+                        $fieldConfig['display'] = $currentConfig['fields'][$fName]['display'];
                     }
                 }
 
@@ -275,7 +295,7 @@ final class DevController extends Controller
         // Processa os campos enviados
         $rawFields = (array) $request->input('fields', []);
         $fields = [];
-        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean'];
+        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean', 'relation'];
 
         foreach ($rawFields as $fieldData) {
             if (!is_array($fieldData)) continue;
@@ -301,6 +321,17 @@ final class DevController extends Controller
                 $rawOptions = trim((string) ($fieldData['options'] ?? ''));
                 $options = array_values(array_filter(array_map('trim', explode(',', $rawOptions))));
                 $fieldConfig['options'] = $options ?: ['Opção 1', 'Opção 2'];
+            }
+
+            if ($fType === 'relation') {
+                $targetModule = trim((string) ($fieldData['relation_target'] ?? ''));
+                if ($targetModule !== '') {
+                    $fieldConfig['target'] = $targetModule;
+                }
+                $displayField = trim((string) ($fieldData['relation_display'] ?? ''));
+                if ($displayField !== '') {
+                    $fieldConfig['display'] = $displayField;
+                }
             }
 
             if ($fType === 'boolean') {

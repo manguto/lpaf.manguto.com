@@ -70,6 +70,21 @@
                                     <?php endif; ?>
                                 <?php elseif ($type === 'select'): ?>
                                     <span class="badge badge-gray"><?= e($val ?: '-') ?></span>
+                                <?php elseif ($type === 'relation'): ?>
+                                    <?php
+                                    $relData = $relationMaps[$key]['map'][$val] ?? null;
+                                    $targetSlug = $relationMaps[$key]['target'] ?? '';
+                                    ?>
+                                    <?php if ($val !== '' && $relData !== null): ?>
+                                        <a href="<?= url($app, '/app/' . $targetSlug . '/' . $val) ?>" style="font-weight: 600; text-decoration: none; color: var(--primary);">
+                                            <?= e($relData) ?>
+                                        </a>
+                                        <small class="muted">(<?= e($val) ?>)</small>
+                                    <?php elseif ($val !== ''): ?>
+                                        <code><?= e($val) ?></code>
+                                    <?php else: ?>
+                                        <span class="muted">-</span>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <?= e($val ?: '-') ?>
                                 <?php endif; ?>

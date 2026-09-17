@@ -237,7 +237,7 @@ main {
                         <th style="min-width: 130px;">Campo (ID)</th>
                         <th style="min-width: 140px;">Rótulo (Label)</th>
                         <th style="min-width: 120px;">Tipo</th>
-                        <th style="min-width: 150px;">Opções (Select)</th>
+                        <th style="min-width: 160px;">Opções / Relação</th>
                         <th style="text-align: center; width: 55px;" title="Campo Obrigatório">Obrig.</th>
                         <th style="text-align: center; width: 50px;" title="Valor Único">Único</th>
                         <th style="text-align: center; width: 50px;" title="Visível na Listagem">Lista</th>
@@ -248,8 +248,11 @@ main {
                     <?php if ($isEdit && !empty($fields)): ?>
                         <?php $idx = 0; foreach ($fields as $fname => $f): ?>
                             <?php 
-                            $isSelect = ($f['type'] ?? '') === 'select';
+                            $fType = $f['type'] ?? 'string';
+                            $isSelect = ($fType === 'select');
+                            $isRelation = ($fType === 'relation');
                             $optionsVal = isset($f['options']) && is_array($f['options']) ? implode(', ', $f['options']) : '';
+                            $relTarget = $f['target'] ?? '';
                             ?>
                             <tr class="field-row" data-index="<?= $idx ?>">
                                 <td style="text-align: center; white-space: nowrap; width: 68px;">
@@ -270,17 +273,32 @@ main {
                                 </td>
                                 <td>
                                     <select name="fields[<?= $idx ?>][type]" onchange="handleTypeChange(this)">
-                                        <option value="string" <?= ($f['type'] ?? 'string') === 'string' ? 'selected' : '' ?>>Texto Curto</option>
-                                        <option value="text" <?= ($f['type'] ?? '') === 'text' ? 'selected' : '' ?>>Texto Longo</option>
-                                        <option value="number" <?= ($f['type'] ?? '') === 'number' ? 'selected' : '' ?>>Número</option>
-                                        <option value="date" <?= ($f['type'] ?? '') === 'date' ? 'selected' : '' ?>>Data</option>
+                                        <option value="string" <?= $fType === 'string' ? 'selected' : '' ?>>Texto Curto</option>
+                                        <option value="text" <?= $fType === 'text' ? 'selected' : '' ?>>Texto Longo</option>
+                                        <option value="number" <?= $fType === 'number' ? 'selected' : '' ?>>Número</option>
+                                        <option value="date" <?= $fType === 'date' ? 'selected' : '' ?>>Data</option>
                                         <option value="select" <?= $isSelect ? 'selected' : '' ?>>Seleção (Select)</option>
-                                        <option value="boolean" <?= ($f['type'] ?? '') === 'boolean' ? 'selected' : '' ?>>Sim / Não</option>
+                                        <option value="relation" <?= $isRelation ? 'selected' : '' ?>>🔗 Relação (Chave 1:N)</option>
+                                        <option value="boolean" <?= $fType === 'boolean' ? 'selected' : '' ?>>Sim / Não</option>
                                     </select>
                                 </td>
                                 <td>
-                                    <input type="text" name="fields[<?= $idx ?>][options]" value="<?= e($optionsVal) ?>" placeholder="Opção 1, Opção 2" style="display: <?= $isSelect ? 'block' : 'none' ?>;">
-                                    <span class="cell-muted-dash" style="display: <?= $isSelect ? 'none' : 'block' ?>;">—</span>
+                                    <div class="col-options-select" style="display: <?= $isSelect ? 'block' : 'none' ?>;">
+                                        <input type="text" name="fields[<?= $idx ?>][options]" value="<?= e($optionsVal) ?>" placeholder="Opção 1, Opção 2" <?= $isSelect ? 'required' : '' ?>>
+                                    </div>
+                                    <div class="col-options-relation" style="display: <?= $isRelation ? 'block' : 'none' ?>;">
+                                        <select name="fields[<?= $idx ?>][relation_target]" <?= $isRelation ? 'required' : '' ?>>
+                                            <option value="">Vincular a...</option>
+                                            <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
+                                                <?php if ($modSlug !== ($module['slug'] ?? '')): ?>
+                                                    <option value="<?= e($modSlug) ?>" <?= $relTarget === $modSlug ? 'selected' : '' ?>>
+                                                        <?= e($mod['name']) ?> (<?= e($mod['entity']) ?>)
+                                                    </option>
+                                                <?php endif; ?>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <span class="cell-muted-dash" style="display: <?= (!$isSelect && !$isRelation) ? 'block' : 'none' ?>;">—</span>
                                 </td>
                                 <td style="text-align: center;">
                                     <input type="checkbox" name="fields[<?= $idx ?>][required]" value="1" <?= !empty($f['required']) ? 'checked' : '' ?>>
@@ -321,11 +339,24 @@ main {
                                     <option value="number">Número</option>
                                     <option value="date">Data</option>
                                     <option value="select">Seleção (Select)</option>
+                                    <option value="relation">🔗 Relação (Chave 1:N)</option>
                                     <option value="boolean">Sim / Não</option>
                                 </select>
                             </td>
                             <td>
-                                <input type="text" name="fields[0][options]" placeholder="Opção 1, Opção 2" style="display: none;">
+                                <div class="col-options-select" style="display: none;">
+                                    <input type="text" name="fields[0][options]" placeholder="Opção 1, Opção 2">
+                                </div>
+                                <div class="col-options-relation" style="display: none;">
+                                    <select name="fields[0][relation_target]">
+                                        <option value="">Vincular a...</option>
+                                        <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
+                                            <option value="<?= e($modSlug) ?>">
+                                                <?= e($mod['name']) ?> (<?= e($mod['entity']) ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
                                 <span class="cell-muted-dash">—</span>
                             </td>
                             <td style="text-align: center;">
@@ -365,6 +396,14 @@ main {
 <script>
 let fieldCount = <?= $isEdit ? (count($fields) ?: 1) : 1 ?>;
 const isEditMode = <?= $isEdit ? 'true' : 'false' ?>;
+const availableModules = <?= json_encode(array_values(array_map(function($m) {
+    return [
+        'slug' => $m['slug'],
+        'name' => $m['name'],
+        'entity' => $m['entity'] ?? $m['name'],
+    ];
+}, $allModules ?? []))) ?>;
+const currentModuleSlug = '<?= e($module['slug'] ?? '') ?>';
 
 function autoGenerateSlug(value) {
     if (isEditMode) return;
@@ -399,17 +438,36 @@ document.getElementById('prefix').addEventListener('input', function() {
 
 function handleTypeChange(selectElement) {
     const row = selectElement.closest('tr');
-    const optionsInput = row.querySelector('input[name*="[options]"]');
+    const selectBox = row.querySelector('.col-options-select');
+    const relationBox = row.querySelector('.col-options-relation');
     const dash = row.querySelector('.cell-muted-dash');
+    const optionsInput = row.querySelector('input[name*="[options]"]');
+    const relationSelect = row.querySelector('select[name*="[relation_target]"]');
+
     if (selectElement.value === 'select') {
-        optionsInput.style.display = 'block';
-        optionsInput.required = true;
+        if (selectBox) selectBox.style.display = 'block';
+        if (relationBox) relationBox.style.display = 'none';
         if (dash) dash.style.display = 'none';
-        optionsInput.focus();
+        if (optionsInput) {
+            optionsInput.required = true;
+            optionsInput.focus();
+        }
+        if (relationSelect) relationSelect.required = false;
+    } else if (selectElement.value === 'relation') {
+        if (selectBox) selectBox.style.display = 'none';
+        if (relationBox) relationBox.style.display = 'block';
+        if (dash) dash.style.display = 'none';
+        if (optionsInput) optionsInput.required = false;
+        if (relationSelect) {
+            relationSelect.required = true;
+            relationSelect.focus();
+        }
     } else {
-        optionsInput.style.display = 'none';
-        optionsInput.required = false;
+        if (selectBox) selectBox.style.display = 'none';
+        if (relationBox) relationBox.style.display = 'none';
         if (dash) dash.style.display = 'block';
+        if (optionsInput) optionsInput.required = false;
+        if (relationSelect) relationSelect.required = false;
     }
 }
 
@@ -504,6 +562,14 @@ function addFieldRow() {
     const tr = document.createElement('tr');
     tr.className = 'field-row';
     tr.dataset.index = idx;
+
+    let relationOptionsHtml = '<option value="">Vincular a...</option>';
+    availableModules.forEach(mod => {
+        if (mod.slug !== currentModuleSlug) {
+            relationOptionsHtml += `<option value="${mod.slug}">${mod.name} (${mod.entity})</option>`;
+        }
+    });
+
     tr.innerHTML = `
         <td style="text-align: center; white-space: nowrap; width: 68px;">
             <div style="display: inline-flex; align-items: center; justify-content: center; gap: 3px;">
@@ -528,11 +594,19 @@ function addFieldRow() {
                 <option value="number">Número</option>
                 <option value="date">Data</option>
                 <option value="select">Seleção (Select)</option>
+                <option value="relation">🔗 Relação (Chave 1:N)</option>
                 <option value="boolean">Sim / Não</option>
             </select>
         </td>
         <td>
-            <input type="text" name="fields[${idx}][options]" placeholder="Opção 1, Opção 2" style="display: none;">
+            <div class="col-options-select" style="display: none;">
+                <input type="text" name="fields[${idx}][options]" placeholder="Opção 1, Opção 2">
+            </div>
+            <div class="col-options-relation" style="display: none;">
+                <select name="fields[${idx}][relation_target]">
+                    ${relationOptionsHtml}
+                </select>
+            </div>
             <span class="cell-muted-dash">—</span>
         </td>
         <td style="text-align: center;">
