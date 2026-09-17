@@ -39,4 +39,14 @@ abstract class CsvRepository
         if ($found) $this->storage->write($this->file(), $this->headers(), $rows);
         return $found;
     }
+    public function delete(string $id): bool
+    {
+        $rows = $this->all();
+        $filtered = array_values(array_filter($rows, fn($row) => ($row['id'] ?? '') !== $id));
+        if (count($filtered) === count($rows)) {
+            return false;
+        }
+        $this->storage->write($this->file(), $this->headers(), $filtered);
+        return true;
+    }
 }

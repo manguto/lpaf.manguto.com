@@ -1,0 +1,99 @@
+<a href="<?= url($app, '/app') ?>" class="back-link">&larr; Voltar para a Aplicação</a>
+
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1><?= e($module['icon'] ?? '📁') ?> <?= e($module['name']) ?></h1>
+        <p class="muted"><?= e($module['description'] ?: "Gerenciamento de {$module['name']}") ?></p>
+    </div>
+    <?php if (can($app, ($module['permission_prefix'] ?? $module['slug']) . '.create')): ?>
+        <a class="btn btn-primary" href="<?= url($app, '/app/' . $module['slug'] . '/create') ?>">
+            + Novo(a) <?= e($module['entity']) ?>
+        </a>
+    <?php endif; ?>
+</div>
+
+<!-- Barra de Busca -->
+<div class="card" style="margin-bottom: 1.5rem; padding: 1rem;">
+    <form method="get" action="<?= url($app, '/app/' . $module['slug']) ?>" style="display: flex; gap: 0.75rem; align-items: center; padding: 0; border: 0; box-shadow: none; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 220px;">
+            <input type="text" name="q" value="<?= e($query ?? '') ?>" placeholder="Pesquisar por qualquer campo..." style="margin-top: 0;">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Buscar</button>
+        <?php if (!empty($query)): ?>
+            <a href="<?= url($app, '/app/' . $module['slug']) ?>" class="btn btn-secondary btn-sm">Limpar Busca</a>
+        <?php endif; ?>
+    </form>
+</div>
+
+<!-- Listagem -->
+<?php if (empty($items)): ?>
+    <div class="card">
+        <p class="muted">
+            <?= !empty($query) ? 'Nenhum registro encontrado para a busca realizada.' : "Nenhum registro de {$module['entity']} cadastrado até o momento." ?>
+        </p>
+    </div>
+<?php else: ?>
+    <?php
+    $listFields = [];
+    foreach ($module['fields'] as $key => $f) {
+        if (!isset($f['list']) || $f['list'] === true) {
+            $listFields[$key] = $f;
+        }
+    }
+    ?>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 100px;">ID</th>
+                    <?php foreach ($listFields as $key => $f): ?>
+                        <th><?= e($f['label'] ?? ucfirst($key)) ?></th>
+                    <?php endforeach; ?>
+                    <th style="text-align: right; min-width: 160px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($items as $item): ?>
+                    <tr>
+                        <td><code><?= e($item['id'] ?? '') ?></code></td>
+                        <?php foreach ($listFields as $key => $f): ?>
+                            <?php
+                            $val = (string) ($item[$key] ?? '');
+                            $type = $f['type'] ?? 'string';
+                            ?>
+                            <td>
+                                <?php if ($type === 'boolean'): ?>
+                                    <?php if ($val === '1' || $val === 'true'): ?>
+                                        <span class="badge badge-success"><?= $key === 'ativo' ? 'Ativo' : 'Sim' ?></span>
+                                    <?php else: ?>
+                                        <span class="badge badge-danger"><?= $key === 'ativo' ? 'Inativo' : 'Não' ?></span>
+                                    <?php endif; ?>
+                                <?php elseif ($type === 'select'): ?>
+                                    <span class="badge badge-gray"><?= e($val ?: '-') ?></span>
+                                <?php else: ?>
+                                    <?= e($val ?: '-') ?>
+                                <?php endif; ?>
+                            </td>
+                        <?php endforeach; ?>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <a class="btn btn-secondary btn-sm" href="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id']) ?>">
+                                Ver
+                            </a>
+                            <?php if (can($app, ($module['permission_prefix'] ?? $module['slug']) . '.edit')): ?>
+                                <a class="btn btn-secondary btn-sm" href="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/edit') ?>">
+                                    Editar
+                                </a>
+                            <?php endif; ?>
+                            <?php if (can($app, ($module['permission_prefix'] ?? $module['slug']) . '.delete')): ?>
+                                <form method="post" action="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/delete') ?>" style="display:inline; background:transparent; border:0; padding:0; box-shadow:none;" onsubmit="return confirm('Deseja realmente excluir este registro de <?= e($module['entity']) ?>?');">
+                                    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                                    <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                                </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+<?php endif; ?>

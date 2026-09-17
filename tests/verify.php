@@ -82,5 +82,49 @@ if (password_verify('senha-segura', $userAfterUpdate['password_hash'])) throw ne
 $profileLogs = $auditService->all('profile_updated');
 if (empty($profileLogs)) throw new RuntimeException('Log de auditoria profile_updated não registrado.');
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria e Perfil/Troca de Senha.\n";
+// Teste do Motor de Módulos e CRUD Declarativo
+$modulesDir = $root . '/modules/equipamentos';
+mkdir($modulesDir, 0775, true);
+copy(dirname(__DIR__) . '/modules/equipamentos/module.php', $modulesDir . '/module.php');
+
+$moduleManager = new \App\Core\ModuleManager($app);
+$modules = $moduleManager->all();
+if (!isset($modules['equipamentos'])) throw new RuntimeException('Módulo equipamentos não descoberto pelo ModuleManager.');
+
+$moduleManager->ensurePermissions();
+$permissions = $app->permissions->all();
+$permIds = array_column($permissions, 'id');
+if (!in_array('equipamentos.view', $permIds, true)) throw new RuntimeException('Permissão equipamentos.view não registrada automaticamente.');
+if (!in_array('equipamentos.create', $permIds, true)) throw new RuntimeException('Permissão equipamentos.create não registrada automaticamente.');
+
+$repo = $moduleManager->repository('equipamentos');
+if (!$repo) throw new RuntimeException('GenericRepository para equipamentos não foi instanciado.');
+
+$newEqp = $repo->insert([
+    'id' => $repo->nextId(),
+    'patrimonio' => 'PAT-001',
+    'nome' => 'Notebook Dell Latitude',
+    'categoria' => 'Notebook',
+    'fabricante' => 'Dell',
+    'modelo' => '5420',
+    'ativo' => '1',
+    'observacoes' => 'Equipamento de TI para testes',
+    'created_at' => date('c'),
+    'updated_at' => date('c'),
+]);
+
+if ($newEqp['id'] !== 'eqp_001') throw new RuntimeException('ID do equipamento não gerou prefixo esperado eqp_001, obtido: ' . $newEqp['id']);
+if ($repo->count() !== 1) throw new RuntimeException('Contagem de equipamentos inválida.');
+
+$foundEqp = $repo->findBy('patrimonio', 'PAT-001');
+if (!$foundEqp || $foundEqp['nome'] !== 'Notebook Dell Latitude') throw new RuntimeException('Falha no findBy do GenericRepository.');
+
+$repo->update('eqp_001', ['nome' => 'Notebook Dell Atualizado']);
+if ($repo->find('eqp_001')['nome'] !== 'Notebook Dell Atualizado') throw new RuntimeException('Falha no update do GenericRepository.');
+
+$deleted = $repo->delete('eqp_001');
+if (!$deleted || $repo->count() !== 0) throw new RuntimeException('Falha no delete do GenericRepository.');
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil e Motor de Módulos (CRUD Declarativo).\n";
+
 

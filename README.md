@@ -686,34 +686,30 @@ Regra especial
 
 ## 27. Módulos
 
-A arquitetura deverá evoluir para permitir módulos isolados.
+O sistema possui um motor de módulos isolados totalmente operacional.
 
-Estrutura conceitual:
+Estrutura implementada:
 
 ```text
 modules/
 ├── equipamentos/
-│   ├── module.php
-│   └── ...
+│   └── module.php
 │
-├── atividades/
-│   ├── module.php
-│   └── ...
-│
-└── ferias/
-    ├── module.php
-    └── ...
+└── ...
 ```
 
-Cada módulo poderá definir:
+Cada módulo define sua estrutura em `modules/<slug>/module.php`:
 
-* entidade;
-* campos;
-* rotas;
-* permissões;
-* menus;
-* regras específicas;
-* Views específicas.
+* `name`: nome de exibição do módulo;
+* `entity`: nome singular da entidade;
+* `slug`: identificador na URL (`/app/<slug>`);
+* `icon`: ícone de exibição no painel;
+* `description`: descrição resumida da funcionalidade;
+* `prefix`: prefixo dos IDs gerados (`eqp_001`, `eqp_002`, etc.);
+* `storage`: arquivo de persistência em `storage/data/<slug>.csv`;
+* `fields`: array associativo definindo tipo (`string`, `text`, `number`, `select`, `boolean`, `date`), obrigatoriedade, unicidade, exibição em listagem e textos de ajuda.
+
+O `ModuleManager` descobre os módulos em tempo de execução, registra automaticamente as rotas RESTful pelo `GenericCrudController`, assegura as permissões no RBAC (`{slug}.view`, `{slug}.create`, `{slug}.edit`, `{slug}.delete`) e expõe um painel de inspeção técnica no Dev-End (`/dev/modules`).
 
 ## 28. Código gerado e código personalizado
 
@@ -1004,9 +1000,9 @@ Status do roadmap:
 7. [x] Persistência em arquivos CSV com travas `flock()` e escrita atômica
 8. [x] Administração básica (gestão de usuários, perfis de acesso e perfil pessoal com troca de senha)
 9. [x] Dev-End consolidado (diagnóstico, backups com rollback/download e visualizador de logs)
-10. [ ] Motor de módulos isolados (`modules/`)
-11. [ ] Entity Builder
-12. [ ] CRUD declarativo por metadados
+10. [x] Motor de módulos isolados (`modules/`)
+11. [ ] Entity Builder (geração assistida pelo Dev-End)
+12. [x] CRUD declarativo por metadados (persistência CSV dinâmica e renderização automática)
 
 ## 41. Contribuições
 

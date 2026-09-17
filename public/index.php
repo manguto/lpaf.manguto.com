@@ -18,7 +18,9 @@ $request = new Request();
 Response::setBasePath($request->basePath());
 $app = new Application($config, new CsvStorage($config), $request);
 $router = new Router($request);
-foreach (['web.php', 'admin.php', 'dev.php'] as $file) (require dirname(__DIR__) . '/routes/' . $file)($router);
+foreach (['web.php', 'admin.php', 'dev.php', 'modules.php'] as $file) {
+    (require dirname(__DIR__) . '/routes/' . $file)($router, $app);
+}
 if (!$app->installed() && $request->path() !== '/setup') Response::redirect('/setup');
 try {
     $router->dispatch($app);

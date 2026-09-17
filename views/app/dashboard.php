@@ -28,7 +28,7 @@ $rolesCount = count($app->roles->all());
 </div>
 
 <h2>Acesso Rápido</h2>
-<div class="grid-2">
+<div class="grid-2" style="margin-bottom: 2rem;">
     <?php if (can($app, 'users.view')): ?>
         <a href="<?= url($app, '/admin') ?>" class="card card-interactive">
             <div style="display: flex; align-items: flex-start; justify-content: space-between;">
@@ -57,3 +57,35 @@ $rolesCount = count($app->roles->all());
         </a>
     <?php endif; ?>
 </div>
+
+<?php
+$modules = $app->modules->all();
+?>
+<?php if (!empty($modules)): ?>
+    <h2>Módulos da Aplicação</h2>
+    <div class="grid-2">
+        <?php foreach ($modules as $slug => $mod): ?>
+            <?php
+            $perm = ($mod['permission_prefix'] ?? $slug) . '.view';
+            if (!can($app, $perm)) continue;
+            $repo = $app->modules->repository($slug);
+            $count = $repo ? $repo->count() : 0;
+            ?>
+            <a href="<?= url($app, '/app/' . $slug) ?>" class="card card-interactive">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                            <span style="font-size: 1.4rem;"><?= e($mod['icon'] ?? '📁') ?></span>
+                            <h3 style="margin-bottom: 0; color: var(--text-main);"><?= e($mod['name']) ?></h3>
+                            <span class="badge badge-info" style="font-size: 0.75rem;"><?= $count ?> <?= $count === 1 ? 'registro' : 'registros' ?></span>
+                        </div>
+                        <p class="muted" style="font-size: 0.875rem;">
+                            <?= e($mod['description'] ?: "Gestão declarativa de {$mod['entity']}.") ?>
+                        </p>
+                    </div>
+                    <span style="font-size: 1.5rem; color: var(--primary);">&rarr;</span>
+                </div>
+            </a>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>

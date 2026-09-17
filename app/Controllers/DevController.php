@@ -81,4 +81,22 @@ final class DevController extends Controller
             'users' => $users,
         ]);
     }
+
+    public function modules(Request $request): void
+    {
+        $modules = $this->app->modules->all();
+        $stats = [];
+        foreach ($modules as $slug => $mod) {
+            $repo = $this->app->modules->repository($slug);
+            $stats[$slug] = [
+                'count' => $repo ? $repo->count() : 0,
+                'storage_exists' => $this->app->storage->exists($mod['storage']),
+            ];
+        }
+
+        $this->view('dev/modules', [
+            'modules' => $modules,
+            'stats' => $stats,
+        ]);
+    }
 }

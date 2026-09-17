@@ -13,11 +13,13 @@ final class Application
     public UserRepository $users;
     public RoleRepository $roles;
     public PermissionRepository $permissions;
+    public ModuleManager $modules;
     public function __construct(public Config $config, public CsvStorage $storage, public Request $request)
     {
         $this->users = new UserRepository($storage);
         $this->roles = new RoleRepository($storage);
         $this->permissions = new PermissionRepository($storage);
+        $this->modules = new ModuleManager($this);
     }
     public function installed(): bool
     {
