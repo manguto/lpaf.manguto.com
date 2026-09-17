@@ -12,4 +12,5 @@ return static function (Router $router): void {
     $router->post('/dev/backups', [DevController::class, 'createBackup'])->middleware(AuthMiddleware::class)->middleware(CsrfMiddleware::class)->permission('dev.access');
     $router->post('/dev/backups/{id}/restore', [DevController::class, 'restoreBackup'])->middleware(AuthMiddleware::class)->middleware(CsrfMiddleware::class)->permission('dev.access');
     $router->get('/dev/backups/{id}/download', [DevController::class, 'downloadBackup'])->middleware(AuthMiddleware::class)->permission('dev.access');
+    $router->get('/dev/logs', [DevController::class, 'logs'])->middleware(AuthMiddleware::class)->permission('dev.logs');
 };

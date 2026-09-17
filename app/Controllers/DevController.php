@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
+use App\Services\AuditService;
 use App\Services\BackupService;
 
 final class DevController extends Controller
@@ -60,5 +61,24 @@ final class DevController extends Controller
         $service = new BackupService($this->app);
         $backupId = (string) ($params['id'] ?? '');
         $service->download($backupId);
+    }
+
+    public function logs(Request $request): void
+    {
+        $audit = new AuditService($this->app->storage);
+        $filterAction = trim((string) $request->input('action', ''));
+        $logs = $audit->all($filterAction !== '' ? $filterAction : null);
+
+        $users = [];
+        foreach ($this->app->users->all() as $u) {
+            $users[$u['id']] = $u;
+        }
+
+        $this->view('dev/logs', [
+            'logs' => $logs,
+            'actions' => $audit->actions(),
+            'filterAction' => $filterAction,
+            'users' => $users,
+        ]);
     }
 }

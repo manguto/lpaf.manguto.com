@@ -8,7 +8,7 @@ final class View
 {
     public static function render(string $name, array $data = []): void
     {
-        $data += ['error' => null, 'installed' => null, 'csrf' => '', 'users' => [], 'roles' => [], 'permissions' => [], 'status' => [], 'edit' => null, 'backups' => []];
+        $data += ['error' => null, 'installed' => null, 'csrf' => '', 'users' => [], 'roles' => [], 'permissions' => [], 'status' => [], 'edit' => null, 'backups' => [], 'logs' => [], 'actions' => [], 'filterAction' => ''];
         extract($data, EXTR_SKIP);
         $root = dirname(__DIR__, 2);
         $view = $root . '/views/' . $name . '.php';

@@ -49,6 +49,13 @@ foreach ($backupsAfter as $b) {
         break;
     }
 }
-if (!$hasPreRestore) throw new RuntimeException('Salvaguarda pré-restauração não foi gerada.');
+// Teste do AuditService (append atômico e filtros)
+$auditService = new \App\Services\AuditService($app->storage);
+$auditService->log('evento_teste', 'usr_001', 'detalhe=123');
+$logs = $auditService->all();
+if (empty($logs) || $logs[0]['action'] !== 'evento_teste') throw new RuntimeException('Falha no registro/leitura de auditoria.');
+$filteredLogs = $auditService->all('evento_teste');
+if (empty($filteredLogs) || $filteredLogs[0]['action'] !== 'evento_teste') throw new RuntimeException('Falha no filtro de auditoria.');
+if (!in_array('evento_teste', $auditService->actions(), true)) throw new RuntimeException('Ação não listada em actions().');
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC e Backups (criação e restauração com salvaguarda).\n";
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups e Auditoria (append e consultas).\n";
