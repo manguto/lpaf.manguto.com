@@ -579,38 +579,19 @@ Funcionalidades previstas:
 
 ## 24. Entity Builder
 
-Uma funcionalidade futura central do Dev-End será o **Entity Builder**.
+O **Entity Builder** é um assistente visual operacional dentro do Dev-End (`/dev/entity-builder`), permitindo a criação declarativa e instantânea de novas entidades administrativas diretamente pelo navegador.
 
-O Desenvolvedor poderá definir uma entidade como:
+Recursos implementados:
 
-```text
-Equipamento
-```
-
-e seus campos:
-
-```text
-patrimonio       string
-nome             string
-categoria        select
-fabricante       string
-modelo            string
-ativo             boolean
-observacoes       text
-```
-
-O sistema poderá então gerar ou configurar automaticamente:
-
-* armazenamento;
-* listagem;
-* formulário de cadastro;
-* edição;
-* visualização;
-* validações;
-* rotas;
-* permissões;
-* menu;
-* auditoria.
+* Formulário visual para definição de nome, entidade no singular, slug com auto-geração, prefixo de ID e ícone/emoji;
+* Construtor dinâmico de campos com suporte a: `string` (texto curto), `text` (texto longo), `number` (número), `date` (data), `select` (múltiplas opções separadas por vírgula) e `boolean` (ativo / sim-não);
+* Controles granulares por campo: obrigatório, único e visibilidade na listagem principal;
+* **Salvaguarda de segurança pré-geração:** geração automática de backup snapshot (`pre_entity_create_*`) antes de qualquer alteração física no disco;
+* **Proteção contra sobrescrita:** impede a criação de módulos que colidam com slugs existentes ou rotas reservadas da plataforma;
+* Geração do arquivo `modules/<slug>/module.php` e inicialização física do CSV em `storage/data/<slug>.csv`;
+* Sincronização automática de permissões no RBAC (`{slug}.view`, `{slug}.create`, `{slug}.edit`, `{slug}.delete`) e concessão ao perfil `role_admin`;
+* Exclusão segura de módulos personalizados via Dev-End com salvaguarda pré-remoção (`pre_entity_delete_*`);
+* Registro de auditoria completo de criação e exclusão de entidades.
 
 ## 25. Desenvolvimento declarativo
 
@@ -1001,7 +982,7 @@ Status do roadmap:
 8. [x] Administração básica (gestão de usuários, perfis de acesso e perfil pessoal com troca de senha)
 9. [x] Dev-End consolidado (diagnóstico, backups com rollback/download e visualizador de logs)
 10. [x] Motor de módulos isolados (`modules/`)
-11. [ ] Entity Builder (geração assistida pelo Dev-End)
+11. [x] Entity Builder (assistente visual para criação de entidades no Dev-End)
 12. [x] CRUD declarativo por metadados (persistência CSV dinâmica e renderização automática)
 
 ## 41. Contribuições

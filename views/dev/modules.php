@@ -1,8 +1,13 @@
 <a href="<?= url($app, '/dev') ?>" class="back-link">&larr; Voltar para o Dev-End</a>
 
-<div style="margin-bottom: 2rem;">
-    <h1>Módulos do Sistema</h1>
-    <p class="muted">Entidades declarativas descobertas em <code>modules/</code> e gerenciadas pelo motor CRUD.</p>
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1>Módulos do Sistema</h1>
+        <p class="muted">Entidades declarativas descobertas em <code>modules/</code> e gerenciadas pelo motor CRUD.</p>
+    </div>
+    <a class="btn btn-primary" href="<?= url($app, '/dev/entity-builder') ?>">
+        + Nova Entidade (Entity Builder)
+    </a>
 </div>
 
 <?php if (empty($modules)): ?>
@@ -25,13 +30,17 @@
                         </div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                     <a class="btn btn-secondary btn-sm" href="<?= url($app, '/app/' . $slug) ?>">
                         Acessar Módulo &rarr;
                     </a>
                     <a class="btn btn-primary btn-sm" href="<?= url($app, '/app/' . $slug . '/create') ?>">
                         + Novo(a) <?= e($mod['entity']) ?>
                     </a>
+                    <form method="post" action="<?= url($app, '/dev/modules/' . $slug . '/delete') ?>" style="display:inline; background:transparent; border:0; padding:0; box-shadow:none;" onsubmit="return confirm('ATENÇÃO: Deseja realmente excluir o módulo <?= e($mod['name']) ?> (<?= e($slug) ?>)?\n\nOs arquivos de definição do módulo serão removidos. Um backup de salvaguarda será gerado automaticamente.');">
+                        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                        <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                    </form>
                 </div>
             </div>
 

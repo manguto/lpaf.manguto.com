@@ -99,4 +99,167 @@ final class DevController extends Controller
             'stats' => $stats,
         ]);
     }
+
+    public function entityBuilder(Request $request): void
+    {
+        $this->view('dev/entity-builder');
+    }
+
+    public function storeEntity(Request $request): void
+    {
+        $name = trim((string) $request->input('name'));
+        $entity = trim((string) $request->input('entity'));
+        $rawSlug = trim((string) $request->input('slug'));
+        $slug = preg_replace('/[^a-z0-9_-]/', '', strtolower($rawSlug));
+        $icon = trim((string) $request->input('icon')) ?: '📁';
+        $description = trim((string) $request->input('description'));
+        $prefix = preg_replace('/[^a-z0-9]/', '', strtolower((string) $request->input('prefix'))) ?: substr($slug, 0, 3);
+
+        if ($name === '' || $entity === '' || $slug === '') {
+            Session::flash('error', 'Nome do módulo, nome da entidade e slug são obrigatórios.');
+            Response::redirect('/dev/entity-builder');
+        }
+
+        if (strlen($slug) < 3 || strlen($slug) > 30) {
+            Session::flash('error', 'O slug deve conter entre 3 e 30 caracteres alfanuméricos.');
+            Response::redirect('/dev/entity-builder');
+        }
+
+        $reserved = ['admin', 'app', 'dev', 'login', 'setup', 'profile', 'logout', 'assets', 'api', 'install', 'system'];
+        if (in_array($slug, $reserved, true)) {
+            Session::flash('error', "O slug '{$slug}' é uma palavra reservada da plataforma e não pode ser utilizado.");
+            Response::redirect('/dev/entity-builder');
+        }
+
+        $modulesDir = $this->app->config->get('root') . '/modules';
+        $targetModuleDir = $modulesDir . '/' . $slug;
+        if (is_dir($targetModuleDir)) {
+            Session::flash('error', "Já existe um módulo registrado com o slug '{$slug}'. Operação cancelada para evitar sobrescrita.");
+            Response::redirect('/dev/entity-builder');
+        }
+
+        // Processa os campos enviados
+        $rawFields = (array) $request->input('fields', []);
+        $fields = [];
+        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean'];
+
+        foreach ($rawFields as $fieldData) {
+            if (!is_array($fieldData)) continue;
+            $fName = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) ($fieldData['name'] ?? ''))));
+            if ($fName === '' || $fName === 'id' || $fName === 'created_at' || $fName === 'updated_at') continue;
+
+            $fLabel = trim((string) ($fieldData['label'] ?? '')) ?: ucfirst($fName);
+            $fType = in_array($fieldData['type'] ?? '', $allowedTypes, true) ? $fieldData['type'] : 'string';
+            $fRequired = !empty($fieldData['required']);
+            $fUnique = !empty($fieldData['unique']);
+            $fList = !empty($fieldData['list']);
+            $fHelp = trim((string) ($fieldData['help'] ?? ''));
+
+            $fieldConfig = [
+                'label' => $fLabel,
+                'type' => $fType,
+                'required' => $fRequired,
+                'unique' => $fUnique,
+                'list' => $fList,
+            ];
+
+            if ($fType === 'select') {
+                $rawOptions = trim((string) ($fieldData['options'] ?? ''));
+                $options = array_values(array_filter(array_map('trim', explode(',', $rawOptions))));
+                $fieldConfig['options'] = $options ?: ['Opção 1', 'Opção 2'];
+            }
+
+            if ($fType === 'boolean') {
+                $fieldConfig['default'] = true;
+            }
+
+            if ($fHelp !== '') {
+                $fieldConfig['help'] = $fHelp;
+            }
+
+            $fields[$fName] = $fieldConfig;
+        }
+
+        if (empty($fields)) {
+            Session::flash('error', 'Defina pelo menos um campo válido para a entidade.');
+            Response::redirect('/dev/entity-builder');
+        }
+
+        // Salvaguarda pré-criação conforme Seção 29 do README
+        (new BackupService($this->app))->create('pre_entity_create_' . $slug, $this->user()['id'] ?? null);
+
+        // Criação física do diretório do módulo
+        if (!mkdir($targetModuleDir, 0775, true) && !is_dir($targetModuleDir)) {
+            Session::flash('error', 'Não foi possível criar o diretório do módulo.');
+            Response::redirect('/dev/entity-builder');
+        }
+
+        // Geração do arquivo module.php
+        $moduleConfig = [
+            'name' => $name,
+            'entity' => $entity,
+            'slug' => $slug,
+            'icon' => $icon,
+            'description' => $description,
+            'prefix' => $prefix,
+            'storage' => $slug . '.csv',
+            'permission_prefix' => $slug,
+            'fields' => $fields,
+        ];
+
+        $code = "<?php\n\ndeclare(strict_types=1);\n\nreturn " . var_export($moduleConfig, true) . ";\n";
+        file_put_contents($targetModuleDir . '/module.php', $code);
+
+        // Inicializa arquivo CSV no storage/data se não existir
+        $fieldHeaders = array_merge(['id', 'created_at', 'updated_at'], array_keys($fields));
+        if (!$this->app->storage->exists($slug . '.csv')) {
+            $this->app->storage->write($slug . '.csv', $fieldHeaders, []);
+        }
+
+        // Sincroniza permissões no RBAC
+        $this->app->modules->ensurePermissions();
+
+        // Registra evento de auditoria
+        (new AuditService($this->app->storage))->log(
+            'module_created',
+            $this->user()['id'] ?? null,
+            "slug={$slug}; entity={$entity}"
+        );
+
+        Session::flash('message', "Módulo '{$name}' criado e ativado com sucesso!");
+        Response::redirect('/dev/modules');
+    }
+
+    public function deleteModule(Request $request, array $params): void
+    {
+        $slug = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($params['slug'] ?? '')));
+        $modulesDir = $this->app->config->get('root') . '/modules';
+        $targetModuleDir = $modulesDir . '/' . $slug;
+
+        if (!is_dir($targetModuleDir)) {
+            Session::flash('error', "Módulo '{$slug}' não encontrado.");
+            Response::redirect('/dev/modules');
+        }
+
+        // Salvaguarda pré-exclusão
+        (new BackupService($this->app))->create('pre_entity_delete_' . $slug, $this->user()['id'] ?? null);
+
+        // Exclui arquivos do diretório do módulo
+        $files = glob($targetModuleDir . '/*') ?: [];
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                unlink($file);
+            }
+        }
+        rmdir($targetModuleDir);
+
+        (new AuditService($this->app->storage))->log(
+            'module_deleted',
+            $this->user()['id'] ?? null,
+            "slug={$slug}"
+        );
+
+        Session::flash('message', "Módulo '{$slug}' removido com sucesso. Um backup de salvaguarda foi gerado automaticamente.");
+        Response::redirect('/dev/modules');
+    }
 }

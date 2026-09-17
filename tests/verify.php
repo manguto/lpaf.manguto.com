@@ -125,6 +125,63 @@ if ($repo->find('eqp_001')['nome'] !== 'Notebook Dell Atualizado') throw new Run
 $deleted = $repo->delete('eqp_001');
 if (!$deleted || $repo->count() !== 0) throw new RuntimeException('Falha no delete do GenericRepository.');
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil e Motor de Módulos (CRUD Declarativo).\n";
+// Teste do Entity Builder (Criação de Entidade)
+$builderSlug = 'projetos';
+$builderDir = $root . '/modules/' . $builderSlug;
+mkdir($builderDir, 0775, true);
+
+$builderConfig = [
+    'name' => 'Projetos',
+    'entity' => 'Projeto',
+    'slug' => $builderSlug,
+    'icon' => '🚀',
+    'description' => 'Módulo de projetos criado via Entity Builder',
+    'prefix' => 'prj',
+    'storage' => 'projetos.csv',
+    'permission_prefix' => $builderSlug,
+    'fields' => [
+        'codigo' => ['label' => 'Código', 'type' => 'string', 'required' => true, 'unique' => true, 'list' => true],
+        'titulo' => ['label' => 'Título do Projeto', 'type' => 'string', 'required' => true, 'list' => true],
+        'prioridade' => ['label' => 'Prioridade', 'type' => 'select', 'options' => ['Alta', 'Média', 'Baixa'], 'list' => true],
+        'ativo' => ['label' => 'Ativo', 'type' => 'boolean', 'default' => true, 'list' => true],
+    ],
+];
+file_put_contents($builderDir . '/module.php', "<?php\nreturn " . var_export($builderConfig, true) . ";\n");
+
+// Gera salvaguarda de segurança pré-criação
+$backupService->create('pre_entity_create_' . $builderSlug, 'usr_001');
+
+// Inicializa CSV e atualiza permissões
+$builderHeaders = ['id', 'created_at', 'updated_at', 'codigo', 'titulo', 'prioridade', 'ativo'];
+$app->storage->write('projetos.csv', $builderHeaders, []);
+$moduleManager = new \App\Core\ModuleManager($app);
+$moduleManager->ensurePermissions();
+
+$allMods = $moduleManager->all();
+if (!isset($allMods['projetos'])) throw new RuntimeException('Módulo projetos criado pelo Entity Builder não foi reconhecido.');
+
+$prjRepo = $moduleManager->repository('projetos');
+$prj = $prjRepo->insert([
+    'id' => $prjRepo->nextId(),
+    'codigo' => 'PRJ-2026',
+    'titulo' => 'Expansão da Infraestrutura',
+    'prioridade' => 'Alta',
+    'ativo' => '1',
+    'created_at' => date('c'),
+    'updated_at' => date('c'),
+]);
+if ($prj['id'] !== 'prj_001') throw new RuntimeException('Prefixo de ID gerado pelo Entity Builder inválido: ' . $prj['id']);
+if ($prjRepo->count() !== 1) throw new RuntimeException('Contagem da entidade projetos inválida.');
+
+$auditService->log('module_created', 'usr_001', 'slug=projetos');
+$modLogs = $auditService->all('module_created');
+if (empty($modLogs)) throw new RuntimeException('Auditoria module_created não foi registrada.');
+
+// Limpa módulo de teste
+unlink($builderDir . '/module.php');
+rmdir($builderDir);
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos e Entity Builder.\n";
+
 
 

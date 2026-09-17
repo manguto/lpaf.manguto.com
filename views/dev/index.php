@@ -49,10 +49,10 @@
     <a href="<?= url($app, '/dev/modules') ?>" class="card card-interactive">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
-                <span class="badge badge-info" style="margin-bottom: 0.5rem;">Arquitetura</span>
-                <h2>Módulos do Sistema</h2>
+                <span class="badge badge-info" style="margin-bottom: 0.5rem;">Arquitetura & Low-Code</span>
+                <h2>Módulos & Entity Builder</h2>
                 <p class="muted" style="font-size: 0.875rem; margin-top: 0.35rem;">
-                    Inspecione os módulos declarativos, esquemas de campos, prefixos de ID e dados do motor CRUD.
+                    Crie novas entidades administrativas visualmente com o assistente do Entity Builder ou inspecione os esquemas dos módulos existentes.
                 </p>
             </div>
             <span style="font-size: 1.5rem; color: var(--info);">&rarr;</span>
