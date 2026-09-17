@@ -13,12 +13,12 @@
     --bg-card: #ffffff;
     --bg-muted: #f1f5f9;
     
-    --border-color: #e2e8f0;
-    --border-hover: #cbd5e1;
+    --border-color: #cbd5e1;
+    --border-hover: #94a3b8;
     
     --text-main: #0f172a;
-    --text-muted: #64748b;
-    --text-light: #94a3b8;
+    --text-muted: #475569;
+    --text-light: #64748b;
     
     /* Cores semânticas */
     --success: #10b981;
@@ -293,7 +293,7 @@ select {
     width: 100%;
     padding: 0.65rem 0.85rem;
     margin-top: 0.4rem;
-    border: 1px solid var(--border-color);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--radius-sm);
     background-color: #ffffff;
     color: var(--text-main);
@@ -438,14 +438,14 @@ table {
 }
 
 th {
-    background-color: var(--bg-muted);
-    color: var(--text-muted);
+    background-color: #e2e8f0;
+    color: #1e293b;
     font-size: 0.75rem;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 0.85rem 1rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
 }
 
 td {

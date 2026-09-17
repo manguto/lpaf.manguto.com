@@ -692,7 +692,7 @@ Cada módulo define sua estrutura em `modules/<slug>/module.php`:
 * `storage`: arquivo de persistência em `storage/data/<slug>.csv`;
 * `fields`: array associativo definindo tipo (`string`, `text`, `number`, `select`, `boolean`, `date`), obrigatoriedade, unicidade, exibição em listagem e textos de ajuda.
 
-O `ModuleManager` descobre os módulos em tempo de execução, registra automaticamente as rotas RESTful pelo `GenericCrudController`, assegura as permissões no RBAC (`{slug}.view`, `{slug}.create`, `{slug}.edit`, `{slug}.delete`) e expõe um painel de inspeção técnica no Dev-End (`/dev/modules`).
+O `ModuleManager` descobre os módulos em tempo de execução, registra automaticamente as rotas RESTful pelo `GenericCrudController`, assegura as permissões no RBAC (`{slug}.view`, `{slug}.create`, `{slug}.edit`, `{slug}.delete`) e expõe um painel pontual de controle e acesso direto às entidades no Dev-End (`/dev/modules`), com busca em tempo real, atalhos imediatos de operação e inspeção de campos sob demanda.
 
 ## 28. Código gerado e código personalizado
 
