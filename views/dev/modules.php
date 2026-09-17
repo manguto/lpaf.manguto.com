@@ -18,7 +18,7 @@
     <!-- Barra de Acesso e Filtro Rápido -->
     <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
         <div style="flex: 1; max-width: 360px;">
-            <input type="text" id="module-filter" placeholder="Filtrar entidade por nome ou slug..." oninput="filterModules(this.value)" style="margin-top: 0; padding: 0.5rem 0.8rem; font-size: 0.9rem;">
+            <input type="text" id="module-filter" placeholder="Filtrar entidade por nome ou slug..." oninput="filterModules(this.value)" style="margin-top: 0; padding: 0.5rem 0.8rem; font-size: 0.9rem; border: 1.5px solid #94a3b8;">
         </div>
         <div class="muted" style="font-size: 0.85rem;">
             Total: <strong><?= count($modules) ?></strong> <?= count($modules) === 1 ? 'módulo ativo' : 'módulos ativos' ?>
@@ -33,16 +33,16 @@
             $count = $stat['count'];
             $fieldsCount = count($mod['fields']);
             ?>
-            <div class="card module-item" data-search="<?= strtolower(e($mod['name'] . ' ' . $mod['entity'] . ' ' . $slug)) ?>" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="card module-item" data-search="<?= strtolower(e($mod['name'] . ' ' . $mod['entity'] . ' ' . $slug)) ?>" style="margin-bottom: 0; border: 1.5px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <!-- Cabeçalho do Card -->
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem;">
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                             <span style="font-size: 2rem; line-height: 1;"><?= e($mod['icon'] ?? '📁') ?></span>
                             <div>
-                                <h2 style="font-size: 1.25rem; margin-bottom: 0.15rem;"><?= e($mod['name']) ?></h2>
+                                <h2 style="font-size: 1.25rem; margin-bottom: 0.15rem; color: #0f172a;"><?= e($mod['name']) ?></h2>
                                 <div class="muted" style="font-size: 0.825rem;">
-                                    Entidade: <strong><?= e($mod['entity']) ?></strong> &bull; <code>/app/<?= e($slug) ?></code>
+                                    Entidade: <strong style="color: #0f172a;"><?= e($mod['entity']) ?></strong> &bull; <code>/app/<?= e($slug) ?></code>
                                 </div>
                             </div>
                         </div>
@@ -52,15 +52,51 @@
                     </div>
 
                     <!-- Descrição Pontual -->
-                    <p class="muted" style="font-size: 0.875rem; margin-bottom: 1rem; line-height: 1.45; min-height: 2.5rem;">
+                    <p style="font-size: 0.875rem; color: #334155; margin-bottom: 1rem; line-height: 1.45; min-height: 2.5rem;">
                         <?= e($mod['description'] ?: "Gerenciamento e persistência declarativa de {$mod['name']}.") ?>
                     </p>
 
-                    <!-- Pílulas de Metadados -->
-                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                        <span class="badge badge-purple" style="font-size: 0.72rem;">Prefixo: <?= e($mod['prefix']) ?>_</span>
-                        <span class="badge badge-info" style="font-size: 0.72rem;"><?= $fieldsCount ?> <?= $fieldsCount === 1 ? 'campo' : 'campos' ?></span>
-                        <span class="badge badge-gray" style="font-size: 0.72rem;"><?= e($mod['storage']) ?></span>
+                    <!-- Bloco de Campos em Alto Contraste -->
+                    <div style="background: #f1f5f9; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 0.75rem; margin-bottom: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #1e293b;">
+                                Campos Declarados (<?= $fieldsCount ?>)
+                            </span>
+                            <span style="font-size: 0.75rem; color: #475569; font-weight: 600;">
+                                Prefixo: <code><?= e($mod['prefix']) ?>_001</code>
+                            </span>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                            <?php foreach ($mod['fields'] as $fname => $f): ?>
+                                <?php
+                                $type = $f['type'] ?? 'string';
+                                $typeBadge = match($type) {
+                                    'number' => 'badge-purple',
+                                    'select' => 'badge-warning',
+                                    'boolean' => 'badge-success',
+                                    'date' => 'badge-gray',
+                                    'text' => 'badge-info',
+                                    default => 'badge-info',
+                                };
+                                $typeLabel = match($type) {
+                                    'string' => 'texto',
+                                    'text' => 'longo',
+                                    'number' => 'número',
+                                    'select' => 'select',
+                                    'boolean' => 'sim/não',
+                                    'date' => 'data',
+                                    default => $type,
+                                };
+                                ?>
+                                <span style="display: inline-flex; align-items: center; gap: 0.4rem; background: #ffffff; border: 1.5px solid #94a3b8; border-radius: 6px; padding: 0.3rem 0.55rem; box-shadow: 0 1px 2px rgba(0,0,0,0.06);" title="Rótulo: <?= e($f['label'] ?? $fname) ?>">
+                                    <strong style="color: #0f172a; font-size: 0.825rem; font-family: monospace;"><?= e($fname) ?></strong>
+                                    <span class="badge <?= $typeBadge ?>" style="font-size: 0.68rem; padding: 0.15rem 0.4rem; text-transform: lowercase; font-weight: 700;"><?= $typeLabel ?></span>
+                                    <?php if (!empty($f['required'])): ?>
+                                        <span style="color: var(--danger); font-weight: 900; font-size: 0.85rem;" title="Campo Obrigatório">*</span>
+                                    <?php endif; ?>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 </div>
 
@@ -70,7 +106,7 @@
                         <a class="btn btn-primary btn-sm" href="<?= url($app, '/app/' . $slug) ?>" style="flex: 1; text-align: center; font-weight: 700;">
                             Acessar Entidade &rarr;
                         </a>
-                        <a class="btn btn-secondary btn-sm" href="<?= url($app, '/dev/modules/' . $slug . '/edit') ?>" title="Editar campos e configurações no Entity Builder">
+                        <a class="btn btn-secondary btn-sm" href="<?= url($app, '/dev/modules/' . $slug . '/edit') ?>" title="Editar campos e configurações no Entity Builder" style="border-color: #94a3b8; color: #1e293b; font-weight: 600;">
                             ⚙ Editar Estrutura
                         </a>
                         <form method="post" action="<?= url($app, '/dev/modules/' . $slug . '/delete') ?>" style="display:inline; background:transparent; border:0; padding:0; box-shadow:none; margin:0;" onsubmit="return confirm('ATENÇÃO: Deseja realmente excluir o módulo <?= e($mod['name']) ?> (<?= e($slug) ?>)?\n\nOs arquivos de definição serão removidos e um backup de salvaguarda será gerado automaticamente.');">
@@ -78,26 +114,6 @@
                             <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.35rem 0.55rem;" title="Excluir módulo">&times;</button>
                         </form>
                     </div>
-
-                    <!-- Detalhes de Campos Sob Demanda (não polui a tela) -->
-                    <details style="margin-top: 0.75rem;">
-                        <summary style="cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); list-style: none; display: flex; align-items: center; justify-content: space-between; user-select: none;">
-                            <span>▸ Ver campos declarados (<?= $fieldsCount ?>)</span>
-                            <span class="muted" style="font-size: 0.7rem; font-weight: normal;">Expandir</span>
-                        </summary>
-                        <div style="margin-top: 0.5rem; background: var(--bg-muted); border-radius: var(--radius-sm); padding: 0.6rem; font-size: 0.78rem;">
-                            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">
-                                <span style="background: #ffffff; padding: 0.2rem 0.45rem; border-radius: 4px; border: 1px solid var(--border-color); font-family: monospace;">id (pk)</span>
-                                <?php foreach ($mod['fields'] as $fname => $f): ?>
-                                    <span style="background: #ffffff; padding: 0.2rem 0.45rem; border-radius: 4px; border: 1px solid var(--border-color);" title="<?= e($f['label'] ?? $fname) ?>">
-                                        <code style="font-weight: 600;"><?= e($fname) ?></code>: <span style="color: var(--primary);"><?= e($f['type'] ?? 'string') ?></span>
-                                    </span>
-                                <?php endforeach; ?>
-                                <span style="background: #ffffff; padding: 0.2rem 0.45rem; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-muted);">created_at</span>
-                                <span style="background: #ffffff; padding: 0.2rem 0.45rem; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-muted);">updated_at</span>
-                            </div>
-                        </div>
-                    </details>
                 </div>
             </div>
         <?php endforeach; ?>

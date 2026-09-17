@@ -52,17 +52,18 @@ main {
     padding: 0;
     font-size: 7px;
     line-height: 1;
-    background: #e2e8f0;
-    color: #334155;
-    border: 1px solid #cbd5e1;
+    background: #cbd5e1;
+    color: #0f172a;
+    border: 1px solid #94a3b8;
     border-radius: 2px;
     cursor: pointer;
+    font-weight: bold;
     transition: var(--transition);
 }
 
 .btn-order:hover {
-    background: #cbd5e1;
-    color: #0f172a;
+    background: #94a3b8;
+    color: #000000;
 }
 
 .btn-order:disabled {
@@ -74,40 +75,80 @@ main {
 #fields-table {
     table-layout: auto;
     width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1.5px solid #cbd5e1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
 }
 
 #fields-table th {
-    padding: 0.55rem 0.4rem;
-    font-size: 0.72rem;
-    letter-spacing: 0.03em;
+    background-color: #e2e8f0;
+    color: #0f172a;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 0.6rem 0.45rem;
     white-space: nowrap;
+    border-bottom: 2px solid #94a3b8;
 }
 
 #fields-table td {
-    padding: 0.4rem 0.4rem;
+    padding: 0.45rem 0.45rem;
+    border-bottom: 1px solid #cbd5e1;
+    background-color: #ffffff;
+}
+
+#fields-table tbody tr:nth-child(even) td {
+    background-color: #f8fafc;
+}
+
+#fields-table tbody tr:hover td {
+    background-color: #f1f5f9;
 }
 
 #fields-table input[type="text"],
 #fields-table select {
     margin-top: 0;
     padding: 0.35rem 0.55rem;
-    font-size: 0.85rem;
-    height: 33px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    height: 34px;
+    border: 1.5px solid #94a3b8;
     border-radius: var(--radius-sm);
+    background-color: #ffffff;
+    color: #0f172a;
+}
+
+#fields-table input[type="text"]:focus,
+#fields-table select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.2);
+    outline: none;
 }
 
 #fields-table input[type="checkbox"] {
     margin: 0 auto;
     display: block;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.row-order-number {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: #0f172a;
+    min-width: 22px;
 }
 
 .cell-muted-dash {
     display: block;
     text-align: center;
-    color: var(--text-light);
-    font-size: 0.85rem;
+    color: #94a3b8;
+    font-weight: bold;
+    font-size: 0.95rem;
     user-select: none;
 }
 </style>
