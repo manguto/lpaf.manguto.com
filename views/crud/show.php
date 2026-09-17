@@ -24,10 +24,14 @@
             $childRefsText = implode(', ', $childRefs);
             ?>
             <?php if ($hasChildRefs): ?>
+                <?php
+                $showMsg = "Não é possível excluir este registro pois ele possui vínculos ativos ({$childRefsText}).\n\nRemova ou desvincule os registros listados abaixo antes de excluí-lo.";
+                ?>
                 <button type="button" 
                         class="btn btn-secondary btn-sm" 
                         style="color: #64748b; border-color: #cbd5e1; cursor: not-allowed;" 
-                        onclick="alert('Não é possível excluir este registro pois ele possui vínculos ativos (<?= e($childRefsText) ?>).\n\nRemova ou desvincule os registros listados abaixo antes de excluí-lo.');" 
+                        data-alert="<?= e($showMsg) ?>"
+                        onclick="alert(this.getAttribute('data-alert'));" 
                         title="Protegido por integridade referencial: <?= e($childRefsText) ?>">
                     🔒 Excluir
                 </button>

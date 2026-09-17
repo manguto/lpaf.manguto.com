@@ -105,15 +105,17 @@
                                 $hasRefs = !empty($refCounts);
                                 $refSummaries = [];
                                 foreach ($refCounts as $mName => $c) {
-                                    $refSummaries[] = "{$c} no módulo '{$mName}'";
+                                    $refSummaries[] = "{$c} em {$mName}";
                                 }
                                 $refText = implode(', ', $refSummaries);
+                                $alertMsg = "Não é possível excluir este(a) {$module['entity']} pois possui vínculos ativos ({$refText}).\n\nPara excluir, primeiro remova ou altere os registros vinculados.";
                                 ?>
                                 <?php if ($hasRefs): ?>
                                     <button type="button" 
                                             class="btn btn-secondary btn-sm" 
                                             style="color: #64748b; border-color: #cbd5e1; cursor: not-allowed;" 
-                                            onclick="alert('Não é possível excluir este(a) <?= e($module['entity']) ?> pois possui vínculos ativos (<?= e($refText) ?>).\n\nPara excluir, primeiro remova ou altere os registros vinculados.');" 
+                                            data-alert="<?= e($alertMsg) ?>"
+                                            onclick="alert(this.getAttribute('data-alert'));" 
                                             title="Protegido por integridade referencial: <?= e($refText) ?>">
                                         🔒 Excluir
                                     </button>
