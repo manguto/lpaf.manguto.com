@@ -301,9 +301,9 @@ $contratosConfig = [
 ];
 file_put_contents($contratosDir . '/module.php', "<?php\nreturn " . var_export($contratosConfig, true) . ";\n");
 
-$moduleManagerRel = new \App\Core\ModuleManager($app);
-$cliRepo = $moduleManagerRel->repository('clientes_test');
-$cntRepo = $moduleManagerRel->repository('contratos_test');
+$app->modules->reload();
+$cliRepo = $app->modules->repository('clientes_test');
+$cntRepo = $app->modules->repository('contratos_test');
 
 // Insere registro no Pai
 $cli1 = $cliRepo->insert([
@@ -326,13 +326,26 @@ if ($cnt1['id'] !== 'cnt_001' || $cnt1['cliente_id'] !== 'cli_001') {
     throw new RuntimeException('Vínculo de chave estrangeira no filho incorreto.');
 }
 
+// Testa resolução reversa de vínculos (visão 360° do pai)
+$crudCtrl = new \App\Controllers\GenericCrudController($app);
+$refMethod = new ReflectionMethod($crudCtrl, 'resolveReverseRelations');
+$refMethod->setAccessible(true);
+$reverseData = $refMethod->invoke($crudCtrl, $clientesConfig, 'cli_001');
+
+if (empty($reverseData) || count($reverseData[0]['items']) !== 1) {
+    throw new RuntimeException('Falha na resolução reversa de vínculos de entidades.');
+}
+if ($reverseData[0]['items'][0]['numero'] !== 'CTR-2026-001') {
+    throw new RuntimeException('Dados do registro filho na sub-listagem reversa incorretos.');
+}
+
 // Testa integridade referencial: simula verificação de exclusão do pai
-$allMods = $moduleManagerRel->all();
+$allMods = $app->modules->all();
 $hasReference = false;
 foreach ($allMods as $otherSlug => $otherMod) {
     foreach ($otherMod['fields'] as $fKey => $fConf) {
         if (($fConf['type'] ?? '') === 'relation' && ($fConf['target'] ?? '') === 'clientes_test') {
-            $otherRepo = $moduleManagerRel->repository($otherSlug);
+            $otherRepo = $app->modules->repository($otherSlug);
             $foundRefs = array_filter($otherRepo->all(), fn($r) => ($r[$fKey] ?? '') === 'cli_001');
             if (!empty($foundRefs)) {
                 $hasReference = true;
@@ -355,7 +368,7 @@ $hasReferenceAfter = false;
 foreach ($allMods as $otherSlug => $otherMod) {
     foreach ($otherMod['fields'] as $fKey => $fConf) {
         if (($fConf['type'] ?? '') === 'relation' && ($fConf['target'] ?? '') === 'clientes_test') {
-            $otherRepo = $moduleManagerRel->repository($otherSlug);
+            $otherRepo = $app->modules->repository($otherSlug);
             $foundRefs = array_filter($otherRepo->all(), fn($r) => ($r[$fKey] ?? '') === 'cli_001');
             if (!empty($foundRefs)) {
                 $hasReferenceAfter = true;

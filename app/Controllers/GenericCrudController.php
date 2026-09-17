@@ -65,6 +65,41 @@ final class GenericCrudController extends Controller
         return $relations;
     }
 
+    private function resolveReverseRelations(array $module, string $parentId): array
+    {
+        $parentSlug = $module['slug'];
+        $allModules = $this->app->modules->all();
+        $reverse = [];
+
+        foreach ($allModules as $childSlug => $childModule) {
+            foreach (($childModule['fields'] ?? []) as $fKey => $fConfig) {
+                if (($fConfig['type'] ?? '') === 'relation' && ($fConfig['target'] ?? '') === $parentSlug) {
+                    $childRepo = $this->app->modules->repository($childSlug);
+                    $childRows = $childRepo ? $childRepo->all() : [];
+                    $matching = array_values(array_filter($childRows, fn($r) => ($r[$fKey] ?? '') === $parentId));
+
+                    $displayFields = [];
+                    foreach (($childModule['fields'] ?? []) as $k => $cfg) {
+                        if ($k !== $fKey && (!isset($cfg['list']) || $cfg['list'] === true)) {
+                            $displayFields[$k] = $cfg;
+                        }
+                    }
+
+                    $reverse[] = [
+                        'module' => $childModule,
+                        'field_key' => $fKey,
+                        'field_label' => $fConfig['label'] ?? ucfirst($fKey),
+                        'items' => $matching,
+                        'display_fields' => $displayFields,
+                        'create_url' => "/app/{$childSlug}/create?{$fKey}=" . urlencode($parentId),
+                    ];
+                }
+            }
+        }
+
+        return $reverse;
+    }
+
     public function index(Request $request, array $params): void
     {
         $module = $this->resolveModule($request, $params);
@@ -99,9 +134,17 @@ final class GenericCrudController extends Controller
         $module = $this->resolveModule($request, $params);
         $relations = $this->resolveRelations($module);
 
+        $prefill = [];
+        foreach ($module['fields'] as $key => $f) {
+            $val = $request->input($key);
+            if ($val !== null && $val !== '') {
+                $prefill[$key] = (string) $val;
+            }
+        }
+
         $this->view('crud/form', [
             'module' => $module,
-            'item' => null,
+            'item' => !empty($prefill) ? $prefill : null,
             'isEdit' => false,
             'relations' => $relations,
         ]);
@@ -179,11 +222,13 @@ final class GenericCrudController extends Controller
         }
 
         $relations = $this->resolveRelations($module);
+        $childRelations = $this->resolveReverseRelations($module, (string) ($item['id'] ?? ''));
 
         $this->view('crud/show', [
             'module' => $module,
             'item' => $item,
             'relationMaps' => $relations,
+            'childRelations' => $childRelations,
         ]);
     }
 

@@ -50,6 +50,13 @@ final class ModuleManager
         }
     }
 
+    public function reload(): void
+    {
+        $this->modules = [];
+        $this->repositories = [];
+        $this->discover();
+    }
+
     public function all(): array
     {
         return $this->modules;

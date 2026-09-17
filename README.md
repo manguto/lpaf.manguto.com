@@ -388,9 +388,16 @@ O sistema conta com um motor completo de **Relacionamentos 1:N (Chaves Estrangei
 * **Seleção Visual no Entity Builder:** Ao configurar ou editar uma entidade no Dev-End, o tipo `🔗 Relação (Chave 1:N)` permite vincular o campo a qualquer outro módulo existente através de menu seletor inteligente;
 * **Formulários Dinâmicos:** As telas de criação e edição renderizam `<select>` populados dinamicamente com os registros da entidade pai (`Rótulo (ID)`) e oferecem atalho imediato para cadastro caso a entidade pai ainda esteja vazia;
 * **Exibição nas Listagens e Detalhes:** As tabelas de listagem (`/app/{slug}`) e detalhes (`show`) substituem os códigos brutos pelos nomes dos registros vinculados, com links diretos para a entidade relacionada;
+* **Sub-listagem Reversa na Visualização do Pai (Visão 360°):** Na visualização de um registro pai (`/app/<pai>/<id>`), o sistema descobre e renderiza automaticamente tabelas com todos os registros filhos vinculados (ex.: contratos do cliente, equipamentos do cliente), além de botão de atalho para cadastrar novos filhos já pré-vinculados;
 * **Integridade Referencial Dupla:**
   - *No Salvamento:* Validação estrita impedindo o envio de chaves estrangeiras inexistentes;
   - *Na Exclusão:* Bloqueio ativo de exclusão de registros pai que possuam vínculos ativos em outros módulos, emitindo alerta amigável e prevenindo a geração de registros órfãos.
+
+### Evoluções planejadas para o motor de relacionamentos:
+
+1. **Filtro rápido por entidade relacionada na listagem (`index.php`):** seletores dinâmicos na barra de busca para filtrar registros filhos por sua entidade pai em um clique;
+2. **Relacionamentos N:N (Muitos para Muitos com Tabela Pivô):** suporte a tabelas intermediárias automáticas (`entidade_a_b.csv`) conforme o modelo `user_roles.csv`;
+3. **Políticas granulares de exclusão (`on_delete`):** suporte declarativo a `restrict` (bloquear exclusão) e `set_null` (desvincular e manter filho quando opcional).
 
 ## 16. Identificadores
 
