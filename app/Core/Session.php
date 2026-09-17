@@ -15,7 +15,10 @@ final class Session
     }
     public static function flash(string $key, ?string $value = null): ?string
     {
-        if ($value !== null) $_SESSION['_flash'][$key] = $value;
+        if ($value !== null) {
+            $_SESSION['_flash'][$key] = $value;
+            return $value;
+        }
         $result = $_SESSION['_flash'][$key] ?? null;
         unset($_SESSION['_flash'][$key]);
         return $result;

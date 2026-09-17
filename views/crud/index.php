@@ -100,10 +100,29 @@
                                 </a>
                             <?php endif; ?>
                             <?php if (can($app, ($module['permission_prefix'] ?? $module['slug']) . '.delete')): ?>
-                                <form method="post" action="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/delete') ?>" style="display:inline; background:transparent; border:0; padding:0; box-shadow:none;" onsubmit="return confirm('Deseja realmente excluir este registro de <?= e($module['entity']) ?>?');">
-                                    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                                    <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
-                                </form>
+                                <?php
+                                $refCounts = $reverseCounts[$item['id']] ?? [];
+                                $hasRefs = !empty($refCounts);
+                                $refSummaries = [];
+                                foreach ($refCounts as $mName => $c) {
+                                    $refSummaries[] = "{$c} no módulo '{$mName}'";
+                                }
+                                $refText = implode(', ', $refSummaries);
+                                ?>
+                                <?php if ($hasRefs): ?>
+                                    <button type="button" 
+                                            class="btn btn-secondary btn-sm" 
+                                            style="color: #64748b; border-color: #cbd5e1; cursor: not-allowed;" 
+                                            onclick="alert('Não é possível excluir este(a) <?= e($module['entity']) ?> pois possui vínculos ativos (<?= e($refText) ?>).\n\nPara excluir, primeiro remova ou altere os registros vinculados.');" 
+                                            title="Protegido por integridade referencial: <?= e($refText) ?>">
+                                        🔒 Excluir
+                                    </button>
+                                <?php else: ?>
+                                    <form method="post" action="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/delete') ?>" style="display:inline; background:transparent; border:0; padding:0; box-shadow:none;" onsubmit="return confirm('Deseja realmente excluir este registro de <?= e($module['entity']) ?>?');">
+                                        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                                        <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                                    </form>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                     </tr>

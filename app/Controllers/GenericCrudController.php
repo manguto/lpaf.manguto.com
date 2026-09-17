@@ -100,6 +100,31 @@ final class GenericCrudController extends Controller
         return $reverse;
     }
 
+    private function resolveReverseReferenceCounts(array $module, array $items): array
+    {
+        $parentSlug = $module['slug'];
+        $allModules = $this->app->modules->all();
+        $itemIds = array_column($items, 'id');
+        $counts = array_fill_keys($itemIds, []);
+
+        foreach ($allModules as $childSlug => $childModule) {
+            foreach (($childModule['fields'] ?? []) as $fKey => $fConfig) {
+                if (($fConfig['type'] ?? '') === 'relation' && ($fConfig['target'] ?? '') === $parentSlug) {
+                    $childRepo = $this->app->modules->repository($childSlug);
+                    $childRows = $childRepo ? $childRepo->all() : [];
+                    foreach ($childRows as $cRow) {
+                        $val = (string) ($cRow[$fKey] ?? '');
+                        if ($val !== '' && isset($counts[$val])) {
+                            $counts[$val][$childModule['name']] = ($counts[$val][$childModule['name']] ?? 0) + 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $counts;
+    }
+
     public function index(Request $request, array $params): void
     {
         $module = $this->resolveModule($request, $params);
@@ -121,11 +146,14 @@ final class GenericCrudController extends Controller
             $items = array_values($items);
         }
 
+        $reverseCounts = $this->resolveReverseReferenceCounts($module, $items);
+
         $this->view('crud/index', [
             'module' => $module,
             'items' => $items,
             'query' => $query,
             'relationMaps' => $relations,
+            'reverseCounts' => $reverseCounts,
         ]);
     }
 

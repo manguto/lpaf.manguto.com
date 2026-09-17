@@ -5,11 +5,38 @@
         <h1><?= e($module['entity']) ?>: <code><?= e($item['id'] ?? '') ?></code></h1>
         <p class="muted">Detalhes do registro cadastrado no módulo <?= e($module['name']) ?>.</p>
     </div>
-    <div style="display: flex; gap: 0.5rem;">
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
         <?php if (can($app, ($module['permission_prefix'] ?? $module['slug']) . '.edit')): ?>
             <a class="btn btn-primary btn-sm" href="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/edit') ?>">
                 Editar Registro
             </a>
+        <?php endif; ?>
+        <?php if (can($app, ($module['permission_prefix'] ?? $module['slug']) . '.delete')): ?>
+            <?php
+            $childRefs = [];
+            foreach ($childRelations as $cr) {
+                $cCount = count($cr['items'] ?? []);
+                if ($cCount > 0) {
+                    $childRefs[] = "{$cCount} no módulo '{$cr['module']['name']}'";
+                }
+            }
+            $hasChildRefs = !empty($childRefs);
+            $childRefsText = implode(', ', $childRefs);
+            ?>
+            <?php if ($hasChildRefs): ?>
+                <button type="button" 
+                        class="btn btn-secondary btn-sm" 
+                        style="color: #64748b; border-color: #cbd5e1; cursor: not-allowed;" 
+                        onclick="alert('Não é possível excluir este registro pois ele possui vínculos ativos (<?= e($childRefsText) ?>).\n\nRemova ou desvincule os registros listados abaixo antes de excluí-lo.');" 
+                        title="Protegido por integridade referencial: <?= e($childRefsText) ?>">
+                    🔒 Excluir
+                </button>
+            <?php else: ?>
+                <form method="post" action="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/delete') ?>" style="display:inline; background:transparent; border:0; padding:0; box-shadow:none; margin:0;" onsubmit="return confirm('Deseja realmente excluir este registro de <?= e($module['entity']) ?>?');">
+                    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                </form>
+            <?php endif; ?>
         <?php endif; ?>
         <a class="btn btn-secondary btn-sm" href="<?= url($app, '/app/' . $module['slug']) ?>">
             Voltar
