@@ -156,7 +156,7 @@ final class DevController extends Controller
 
         $rawFields = (array) $request->input('fields', []);
         $fields = [];
-        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean', 'relation'];
+        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean', 'relation', 'many_to_many'];
 
         if (!empty($rawFields)) {
             foreach ($rawFields as $fieldData) {
@@ -212,6 +212,33 @@ final class DevController extends Controller
                     }
                 }
 
+                if ($fType === 'many_to_many') {
+                    $targetModule = trim((string) ($fieldData['relation_target'] ?? ''));
+                    if ($targetModule !== '') {
+                        $fieldConfig['target'] = $targetModule;
+                    } elseif (isset($currentConfig['fields'][$fName]['target'])) {
+                        $fieldConfig['target'] = $currentConfig['fields'][$fName]['target'];
+                    }
+                    $displayField = trim((string) ($fieldData['relation_display'] ?? ''));
+                    if ($displayField !== '') {
+                        $fieldConfig['display'] = $displayField;
+                    } elseif (isset($currentConfig['fields'][$fName]['display'])) {
+                        $fieldConfig['display'] = $currentConfig['fields'][$fName]['display'];
+                    }
+                    $pivotFile = trim((string) ($fieldData['pivot_file'] ?? ''));
+                    if ($pivotFile !== '') {
+                        $fieldConfig['pivot_file'] = $pivotFile;
+                    } elseif (isset($currentConfig['fields'][$fName]['pivot_file'])) {
+                        $fieldConfig['pivot_file'] = $currentConfig['fields'][$fName]['pivot_file'];
+                    } else {
+                        $fieldConfig['pivot_file'] = $slug . '_' . ($fieldConfig['target'] ?? 'pivot') . '.csv';
+                    }
+                    $parentKey = trim((string) ($fieldData['parent_key'] ?? ''));
+                    $fieldConfig['parent_key'] = $parentKey !== '' ? $parentKey : (rtrim($slug, 's') . '_id');
+                    $targetKey = trim((string) ($fieldData['target_key'] ?? ''));
+                    $fieldConfig['target_key'] = $targetKey !== '' ? $targetKey : (rtrim($fieldConfig['target'] ?? 'target', 's') . '_id');
+                }
+
                 if ($fType === 'boolean') {
                     $fieldConfig['default'] = true;
                 }
@@ -245,14 +272,29 @@ final class DevController extends Controller
         $code = "<?php\n\ndeclare(strict_types=1);\n\nreturn " . var_export($moduleConfig, true) . ";\n";
         file_put_contents($targetModuleDir . '/module.php', $code);
 
-        // Preservação de dados e expansão de colunas no arquivo CSV
-        $fieldHeaders = array_merge(['id', 'created_at', 'updated_at'], array_keys($fields));
+        // Preservação de dados e expansão de colunas no arquivo CSV (campos many_to_many residem na tabela pivot)
+        $scalarFieldNames = array_keys(array_filter($fields, fn($f) => ($f['type'] ?? '') !== 'many_to_many'));
+        $fieldHeaders = array_merge(['id', 'created_at', 'updated_at'], $scalarFieldNames);
         $csvFile = $slug . '.csv';
         if ($this->app->storage->exists($csvFile)) {
             $existingRows = $this->app->storage->read($csvFile);
             $this->app->storage->write($csvFile, $fieldHeaders, $existingRows);
         } else {
             $this->app->storage->write($csvFile, $fieldHeaders, []);
+        }
+
+        // Garante existência das tabelas pivot para campos many_to_many
+        foreach ($fields as $fcfg) {
+            if (($fcfg['type'] ?? '') === 'many_to_many' && !empty($fcfg['pivot_file'])) {
+                $pFile = $fcfg['pivot_file'];
+                if (!$this->app->storage->exists($pFile)) {
+                    $pHeaders = [
+                        $fcfg['parent_key'] ?? (rtrim($slug, 's') . '_id'),
+                        $fcfg['target_key'] ?? (rtrim($fcfg['target'] ?? 'target', 's') . '_id'),
+                    ];
+                    $this->app->storage->write($pFile, $pHeaders, []);
+                }
+            }
         }
 
         $this->app->modules->ensurePermissions();
@@ -303,7 +345,7 @@ final class DevController extends Controller
         // Processa os campos enviados
         $rawFields = (array) $request->input('fields', []);
         $fields = [];
-        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean', 'relation'];
+        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean', 'relation', 'many_to_many'];
 
         foreach ($rawFields as $fieldData) {
             if (!is_array($fieldData)) continue;
@@ -342,6 +384,23 @@ final class DevController extends Controller
                 }
                 $onDelete = trim((string) ($fieldData['relation_on_delete'] ?? ''));
                 $fieldConfig['on_delete'] = in_array($onDelete, ['restrict', 'set_null', 'cascade'], true) ? $onDelete : 'restrict';
+            }
+
+            if ($fType === 'many_to_many') {
+                $targetModule = trim((string) ($fieldData['relation_target'] ?? ''));
+                if ($targetModule !== '') {
+                    $fieldConfig['target'] = $targetModule;
+                }
+                $displayField = trim((string) ($fieldData['relation_display'] ?? ''));
+                if ($displayField !== '') {
+                    $fieldConfig['display'] = $displayField;
+                }
+                $pivotFile = trim((string) ($fieldData['pivot_file'] ?? ''));
+                $fieldConfig['pivot_file'] = $pivotFile !== '' ? $pivotFile : ($slug . '_' . ($fieldConfig['target'] ?? 'pivot') . '.csv');
+                $parentKey = trim((string) ($fieldData['parent_key'] ?? ''));
+                $fieldConfig['parent_key'] = $parentKey !== '' ? $parentKey : (rtrim($slug, 's') . '_id');
+                $targetKey = trim((string) ($fieldData['target_key'] ?? ''));
+                $fieldConfig['target_key'] = $targetKey !== '' ? $targetKey : (rtrim($fieldConfig['target'] ?? 'target', 's') . '_id');
             }
 
             if ($fType === 'boolean') {
@@ -385,10 +444,25 @@ final class DevController extends Controller
         $code = "<?php\n\ndeclare(strict_types=1);\n\nreturn " . var_export($moduleConfig, true) . ";\n";
         file_put_contents($targetModuleDir . '/module.php', $code);
 
-        // Inicializa arquivo CSV no storage/data se não existir
-        $fieldHeaders = array_merge(['id', 'created_at', 'updated_at'], array_keys($fields));
+        // Inicializa arquivo CSV no storage/data se não existir (campos many_to_many residem na pivot)
+        $scalarFieldNames = array_keys(array_filter($fields, fn($f) => ($f['type'] ?? '') !== 'many_to_many'));
+        $fieldHeaders = array_merge(['id', 'created_at', 'updated_at'], $scalarFieldNames);
         if (!$this->app->storage->exists($slug . '.csv')) {
             $this->app->storage->write($slug . '.csv', $fieldHeaders, []);
+        }
+
+        // Garante existência das tabelas pivot para campos many_to_many
+        foreach ($fields as $fcfg) {
+            if (($fcfg['type'] ?? '') === 'many_to_many' && !empty($fcfg['pivot_file'])) {
+                $pFile = $fcfg['pivot_file'];
+                if (!$this->app->storage->exists($pFile)) {
+                    $pHeaders = [
+                        $fcfg['parent_key'] ?? (rtrim($slug, 's') . '_id'),
+                        $fcfg['target_key'] ?? (rtrim($fcfg['target'] ?? 'target', 's') . '_id'),
+                    ];
+                    $this->app->storage->write($pFile, $pHeaders, []);
+                }
+            }
         }
 
         // Sincroniza permissões no RBAC
