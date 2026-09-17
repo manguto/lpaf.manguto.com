@@ -579,19 +579,20 @@ Funcionalidades previstas:
 
 ## 24. Entity Builder
 
-O **Entity Builder** é um assistente visual operacional dentro do Dev-End (`/dev/entity-builder`), permitindo a criação declarativa e instantânea de novas entidades administrativas diretamente pelo navegador.
+O **Entity Builder** é um assistente visual operacional dentro do Dev-End (`/dev/entity-builder`), permitindo a criação e edição declarativa de entidades administrativas diretamente pelo navegador, sem necessidade de escrita manual de código repetitivo.
 
 Recursos implementados:
 
-* Formulário visual para definição de nome, entidade no singular, slug com auto-geração, prefixo de ID e ícone/emoji;
-* Construtor dinâmico de campos com suporte a: `string` (texto curto), `text` (texto longo), `number` (número), `date` (data), `select` (múltiplas opções separadas por vírgula) e `boolean` (ativo / sim-não);
-* Controles granulares por campo: obrigatório, único e visibilidade na listagem principal;
-* **Salvaguarda de segurança pré-geração:** geração automática de backup snapshot (`pre_entity_create_*`) antes de qualquer alteração física no disco;
-* **Proteção contra sobrescrita:** impede a criação de módulos que colidam com slugs existentes ou rotas reservadas da plataforma;
-* Geração do arquivo `modules/<slug>/module.php` e inicialização física do CSV em `storage/data/<slug>.csv`;
-* Sincronização automática de permissões no RBAC (`{slug}.view`, `{slug}.create`, `{slug}.edit`, `{slug}.delete`) e concessão ao perfil `role_admin`;
-* Exclusão segura de módulos personalizados via Dev-End com salvaguarda pré-remoção (`pre_entity_delete_*`);
-* Registro de auditoria completo de criação e exclusão de entidades.
+* **Criação e Edição de Entidades:** Formulário visual unificado para definição e alteração de nome, entidade no singular, slug (imutável na edição), prefixo de ID (imutável na edição), ícone/emoji e descrição da funcionalidade;
+* **Construtor dinâmico de campos:** Suporte a tipos de dados fundamentais: `string` (texto curto), `text` (texto longo), `number` (número), `date` (data), `select` (múltiplas opções separadas por vírgula) e `boolean` (ativo / sim-não);
+* **Controles granulares por campo:** Configuração visual de obrigatoriedade, unicidade e visibilidade na tabela de listagem principal;
+* **Expansão de Schema com Preservação de Dados:** Ao adicionar ou reorganizar campos em uma entidade existente (`/dev/modules/{slug}/edit`), todos os registros previamente gravados em `storage/data/<slug>.csv` são preservados integralmente, com atualização atômica do cabeçalho de colunas;
+* **Salvaguardas automáticas de segurança:** Geração de backups instantâneos automáticos com snapshots completos antes de qualquer alteração física (`pre_entity_create_*`, `pre_entity_edit_*` e `pre_entity_delete_*`);
+* **Proteção contra sobrescrita:** Validação de colisões de slug contra módulos existentes e rotas reservadas do sistema (`admin`, `app`, `dev`, `login`, etc.);
+* **Persistência declarativa:** Geração atômica da configuração do módulo em `modules/<slug>/module.php` e criação/manutenção do armazenamento CSV em `storage/data/<slug>.csv`;
+* **Sincronização imediata de permissões:** Atualização dinâmica das permissões RBAC (`{slug}.view`, `{slug}.create`, `{slug}.edit`, `{slug}.delete`) e concessão automática ao perfil de administrador (`role_admin`);
+* **Gestão e Exclusão Segura:** Painel de controle em `/dev/modules` com acesso direto à edição da entidade, cadastro rápido, exploração do módulo e exclusão assistida com confirmação e salvaguarda;
+* **Auditoria Completa:** Registro rastreável de todas as operações (`module_created`, `module_updated`, `module_deleted`) contendo o ID do usuário responsável e metadados no log de auditoria.
 
 ## 25. Desenvolvimento declarativo
 
@@ -982,8 +983,8 @@ Status do roadmap:
 8. [x] Administração básica (gestão de usuários, perfis de acesso e perfil pessoal com troca de senha)
 9. [x] Dev-End consolidado (diagnóstico, backups com rollback/download e visualizador de logs)
 10. [x] Motor de módulos isolados (`modules/`)
-11. [x] Entity Builder (assistente visual para criação de entidades no Dev-End)
-12. [x] CRUD declarativo por metadados (persistência CSV dinâmica e renderização automática)
+11. [x] Entity Builder (assistente visual para criação e edição de entidades no Dev-End com salvaguardas e expansão de schema)
+12. [x] CRUD declarativo por metadados (persistência CSV dinâmica, renderização automática e integridade de dados)
 
 ## 41. Contribuições
 
@@ -1017,4 +1018,4 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
    ```bash
    php tests/verify.php
    ```
-   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda) e auditoria (escrita em append e consultas).
+   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados e Entity Builder (criação, edição e expansão de campos com integridade de dados).

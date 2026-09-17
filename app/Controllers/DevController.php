@@ -100,9 +100,143 @@ final class DevController extends Controller
         ]);
     }
 
-    public function entityBuilder(Request $request): void
+    public function entityBuilder(): void
     {
-        $this->view('dev/entity-builder');
+        $this->view('dev/entity-builder', ['module' => null, 'isEdit' => false]);
+    }
+
+    public function editEntity(Request $request, array $params): void
+    {
+        $slug = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($params['slug'] ?? '')));
+        $modules = $this->app->modules->all();
+        $module = $modules[$slug] ?? null;
+
+        if (!$module) {
+            Session::flash('error', "Módulo '{$slug}' não encontrado.");
+            Response::redirect('/dev/modules');
+        }
+
+        $this->view('dev/entity-builder', [
+            'module' => $module,
+            'isEdit' => true,
+        ]);
+    }
+
+    public function updateEntity(Request $request, array $params): void
+    {
+        $slug = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($params['slug'] ?? '')));
+        $modulesDir = $this->app->config->get('root') . '/modules';
+        $targetModuleDir = $modulesDir . '/' . $slug;
+
+        if (!is_dir($targetModuleDir)) {
+            Session::flash('error', "Módulo '{$slug}' não encontrado.");
+            Response::redirect('/dev/modules');
+        }
+
+        $name = trim((string) $request->input('name'));
+        $entity = trim((string) $request->input('entity'));
+        $icon = trim((string) $request->input('icon')) ?: '📁';
+        $description = trim((string) $request->input('description'));
+
+        if ($name === '' || $entity === '') {
+            Session::flash('error', 'Nome do módulo e nome da entidade são obrigatórios.');
+            Response::redirect('/dev/modules/' . $slug . '/edit');
+        }
+
+        $moduleFile = $targetModuleDir . '/module.php';
+        $currentConfig = file_exists($moduleFile) ? require $moduleFile : [];
+
+        $prefix = $currentConfig['prefix'] ?? substr($slug, 0, 3);
+        $storage = $currentConfig['storage'] ?? ($slug . '.csv');
+
+        $rawFields = (array) $request->input('fields', []);
+        $fields = [];
+        $allowedTypes = ['string', 'text', 'number', 'date', 'select', 'boolean'];
+
+        if (!empty($rawFields)) {
+            foreach ($rawFields as $fieldData) {
+                if (!is_array($fieldData)) continue;
+                $fName = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) ($fieldData['name'] ?? ''))));
+                if ($fName === '' || $fName === 'id' || $fName === 'created_at' || $fName === 'updated_at') continue;
+
+                $fLabel = trim((string) ($fieldData['label'] ?? '')) ?: ucfirst($fName);
+                $fType = in_array($fieldData['type'] ?? '', $allowedTypes, true) ? $fieldData['type'] : 'string';
+                $fRequired = !empty($fieldData['required']);
+                $fUnique = !empty($fieldData['unique']);
+                $fList = !empty($fieldData['list']);
+                $fHelp = trim((string) ($fieldData['help'] ?? ''));
+
+                $fieldConfig = [
+                    'label' => $fLabel,
+                    'type' => $fType,
+                    'required' => $fRequired,
+                    'unique' => $fUnique,
+                    'list' => $fList,
+                ];
+
+                if ($fType === 'select') {
+                    $rawOptions = trim((string) ($fieldData['options'] ?? ''));
+                    if ($rawOptions !== '') {
+                        $options = array_values(array_filter(array_map('trim', explode(',', $rawOptions))));
+                        $fieldConfig['options'] = $options ?: ['Opção 1', 'Opção 2'];
+                    } else {
+                        $fieldConfig['options'] = $currentConfig['fields'][$fName]['options'] ?? ['Opção 1', 'Opção 2'];
+                    }
+                }
+
+                if ($fType === 'boolean') {
+                    $fieldConfig['default'] = true;
+                }
+
+                if ($fHelp !== '') {
+                    $fieldConfig['help'] = $fHelp;
+                }
+
+                $fields[$fName] = $fieldConfig;
+            }
+        }
+
+        if (empty($fields)) {
+            $fields = $currentConfig['fields'] ?? [];
+        }
+
+        (new BackupService($this->app))->create('pre_entity_edit_' . $slug, $this->user()['id'] ?? null);
+
+        $moduleConfig = [
+            'name' => $name,
+            'entity' => $entity,
+            'slug' => $slug,
+            'icon' => $icon,
+            'description' => $description,
+            'prefix' => $prefix,
+            'storage' => $storage,
+            'permission_prefix' => $slug,
+            'fields' => $fields,
+        ];
+
+        $code = "<?php\n\ndeclare(strict_types=1);\n\nreturn " . var_export($moduleConfig, true) . ";\n";
+        file_put_contents($targetModuleDir . '/module.php', $code);
+
+        // Preservação de dados e expansão de colunas no arquivo CSV
+        $fieldHeaders = array_merge(['id', 'created_at', 'updated_at'], array_keys($fields));
+        $csvFile = $slug . '.csv';
+        if ($this->app->storage->exists($csvFile)) {
+            $existingRows = $this->app->storage->read($csvFile);
+            $this->app->storage->write($csvFile, $fieldHeaders, $existingRows);
+        } else {
+            $this->app->storage->write($csvFile, $fieldHeaders, []);
+        }
+
+        $this->app->modules->ensurePermissions();
+
+        (new AuditService($this->app->storage))->log(
+            'module_updated',
+            $this->user()['id'] ?? null,
+            "slug={$slug}; entity={$entity}"
+        );
+
+        Session::flash('message', "Módulo '{$name}' atualizado com sucesso!");
+        Response::redirect('/dev/modules');
     }
 
     public function storeEntity(Request $request): void

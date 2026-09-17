@@ -177,11 +177,58 @@ $auditService->log('module_created', 'usr_001', 'slug=projetos');
 $modLogs = $auditService->all('module_created');
 if (empty($modLogs)) throw new RuntimeException('Auditoria module_created não foi registrada.');
 
+// Teste de Edição de Entidade (Entity Builder - Edição e Expansão de Schema)
+$backupService->create('pre_entity_edit_' . $builderSlug, 'usr_001');
+
+$builderConfig['fields']['orcamento'] = [
+    'label' => 'Orçamento Previsto',
+    'type' => 'number',
+    'required' => false,
+    'unique' => false,
+    'list' => true,
+];
+file_put_contents($builderDir . '/module.php', "<?php\nreturn " . var_export($builderConfig, true) . ";\n");
+
+// Expansão do CSV preservando os registros existentes
+$updatedHeaders = array_merge(['id', 'created_at', 'updated_at'], array_keys($builderConfig['fields']));
+$existingRows = $app->storage->read('projetos.csv');
+$app->storage->write('projetos.csv', $updatedHeaders, $existingRows);
+
+$moduleManagerUpdated = new \App\Core\ModuleManager($app);
+$prjRepoUpdated = $moduleManagerUpdated->repository('projetos');
+
+// Verifica se os dados existentes continuam íntegros
+$existingPrj = $prjRepoUpdated->find('prj_001');
+if (!$existingPrj || $existingPrj['codigo'] !== 'PRJ-2026' || $existingPrj['titulo'] !== 'Expansão da Infraestrutura') {
+    throw new RuntimeException('Dados da entidade projetos corrompidos ou perdidos durante a edição do schema.');
+}
+if (!array_key_exists('orcamento', $existingPrj)) {
+    throw new RuntimeException('Nova coluna orcamento não está presente no registro existente.');
+}
+
+// Insere novo registro com o novo campo
+$prj2 = $prjRepoUpdated->insert([
+    'id' => $prjRepoUpdated->nextId(),
+    'codigo' => 'PRJ-2027',
+    'titulo' => 'Data Center Cloud',
+    'prioridade' => 'Alta',
+    'ativo' => '1',
+    'orcamento' => '50000',
+    'created_at' => date('c'),
+    'updated_at' => date('c'),
+]);
+if ($prj2['id'] !== 'prj_002') throw new RuntimeException('Segundo ID da entidade projetos inválido.');
+if ($prjRepoUpdated->count() !== 2) throw new RuntimeException('Contagem após inserção pós-edição de schema inválida.');
+
+$auditService->log('module_updated', 'usr_001', 'slug=projetos');
+$modUpdateLogs = $auditService->all('module_updated');
+if (empty($modUpdateLogs)) throw new RuntimeException('Auditoria module_updated não foi registrada.');
+
 // Limpa módulo de teste
 unlink($builderDir . '/module.php');
 rmdir($builderDir);
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos e Entity Builder.\n";
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos e Entity Builder (criação e edição).\n";
 
 
 

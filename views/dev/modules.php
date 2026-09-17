@@ -34,6 +34,9 @@
                     <a class="btn btn-secondary btn-sm" href="<?= url($app, '/app/' . $slug) ?>">
                         Acessar Módulo &rarr;
                     </a>
+                    <a class="btn btn-secondary btn-sm" href="<?= url($app, '/dev/modules/' . $slug . '/edit') ?>">
+                        Editar Entidade
+                    </a>
                     <a class="btn btn-primary btn-sm" href="<?= url($app, '/app/' . $slug . '/create') ?>">
                         + Novo(a) <?= e($mod['entity']) ?>
                     </a>
