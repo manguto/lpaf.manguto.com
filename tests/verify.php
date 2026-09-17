@@ -224,11 +224,41 @@ $auditService->log('module_updated', 'usr_001', 'slug=projetos');
 $modUpdateLogs = $auditService->all('module_updated');
 if (empty($modUpdateLogs)) throw new RuntimeException('Auditoria module_updated não foi registrada.');
 
+// Teste de Reordenação de Campos (novo campo como 2º item)
+$reorderedFields = [
+    'codigo' => $builderConfig['fields']['codigo'],
+    'orcamento' => $builderConfig['fields']['orcamento'],
+    'titulo' => $builderConfig['fields']['titulo'],
+    'prioridade' => $builderConfig['fields']['prioridade'],
+    'ativo' => $builderConfig['fields']['ativo'],
+];
+$builderConfig['fields'] = $reorderedFields;
+file_put_contents($builderDir . '/module.php', "<?php\nreturn " . var_export($builderConfig, true) . ";\n");
+
+// Reordena cabeçalho do CSV preservando os registros existentes
+$reorderedHeaders = array_merge(['id', 'created_at', 'updated_at'], array_keys($reorderedFields));
+$existingRowsReordered = $app->storage->read('projetos.csv');
+$app->storage->write('projetos.csv', $reorderedHeaders, $existingRowsReordered);
+
+$moduleManagerReordered = new \App\Core\ModuleManager($app);
+$reorderedMod = $moduleManagerReordered->get('projetos');
+$fieldKeys = array_keys($reorderedMod['fields']);
+if ($fieldKeys[1] !== 'orcamento') {
+    throw new RuntimeException('Ordem dos campos não foi aplicada corretamente. Esperado orcamento na 2ª posição.');
+}
+
+// Verifica se os dados continuam intactos após reordenação
+$prjRepoReordered = $moduleManagerReordered->repository('projetos');
+$prjAfterReorder = $prjRepoReordered->find('prj_002');
+if (!$prjAfterReorder || $prjAfterReorder['orcamento'] !== '50000' || $prjAfterReorder['titulo'] !== 'Data Center Cloud') {
+    throw new RuntimeException('Dados corrompidos após reordenação dos campos.');
+}
+
 // Limpa módulo de teste
 unlink($builderDir . '/module.php');
 rmdir($builderDir);
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos e Entity Builder (criação e edição).\n";
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos e Entity Builder (criação, edição e reordenação de campos).\n";
 
 
 

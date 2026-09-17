@@ -310,6 +310,18 @@ select:focus {
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+input[readonly],
+textarea[readonly],
+input:disabled,
+select:disabled,
+textarea:disabled {
+    background-color: var(--bg-muted);
+    color: var(--text-main);
+    opacity: 0.85;
+    cursor: not-allowed;
+    border-color: var(--border-color);
+}
+
 input[type="checkbox"],
 input[type="radio"] {
     width: auto;

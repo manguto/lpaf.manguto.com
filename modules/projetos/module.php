@@ -36,10 +36,33 @@ return array (
         3 => 'Outro',
       ),
     ),
+    'prioridade' => 
+    array (
+      'label' => 'Prioridade',
+      'type' => 'select',
+      'required' => true,
+      'unique' => false,
+      'list' => true,
+      'options' => 
+      array (
+        0 => 'Alta',
+        1 => 'Média',
+        2 => 'Baixa',
+        3 => 'Não definido',
+      ),
+    ),
     'descricao' => 
     array (
       'label' => 'Descrição',
       'type' => 'text',
+      'required' => false,
+      'unique' => false,
+      'list' => false,
+    ),
+    'observacoes' => 
+    array (
+      'label' => 'Observações',
+      'type' => 'string',
       'required' => false,
       'unique' => false,
       'list' => false,

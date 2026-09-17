@@ -586,6 +586,7 @@ Recursos implementados:
 * **Criação e Edição de Entidades:** Formulário visual unificado para definição e alteração de nome, entidade no singular, slug (imutável na edição), prefixo de ID (imutável na edição), ícone/emoji e descrição da funcionalidade;
 * **Construtor dinâmico de campos:** Suporte a tipos de dados fundamentais: `string` (texto curto), `text` (texto longo), `number` (número), `date` (data), `select` (múltiplas opções separadas por vírgula) e `boolean` (ativo / sim-não);
 * **Controles granulares por campo:** Configuração visual de obrigatoriedade, unicidade e visibilidade na tabela de listagem principal;
+* **Reordenação Flexível de Campos:** Ajuste dinâmico da ordem dos campos via botões intuitivos (▲ / ▼) e recurso drag-and-drop com reindexação automática, permitindo posicionar novos ou existentes campos em qualquer ordem (ex.: torná-los o segundo item a ser preenchido), com sincronização imediata na renderização dos formulários, listagens e cabeçalho do CSV;
 * **Expansão de Schema com Preservação de Dados:** Ao adicionar ou reorganizar campos em uma entidade existente (`/dev/modules/{slug}/edit`), todos os registros previamente gravados em `storage/data/<slug>.csv` são preservados integralmente, com atualização atômica do cabeçalho de colunas;
 * **Salvaguardas automáticas de segurança:** Geração de backups instantâneos automáticos com snapshots completos antes de qualquer alteração física (`pre_entity_create_*`, `pre_entity_edit_*` e `pre_entity_delete_*`);
 * **Proteção contra sobrescrita:** Validação de colisões de slug contra módulos existentes e rotas reservadas do sistema (`admin`, `app`, `dev`, `login`, etc.);
@@ -1018,4 +1019,4 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
    ```bash
    php tests/verify.php
    ```
-   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados e Entity Builder (criação, edição e expansão de campos com integridade de dados).
+   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados e Entity Builder (criação, edição, expansão e reordenação de campos com integridade de dados).

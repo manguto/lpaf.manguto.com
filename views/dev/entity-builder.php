@@ -3,6 +3,115 @@ $isEdit = !empty($isEdit);
 $module = $module ?? [];
 $fields = $module['fields'] ?? [];
 ?>
+<style>
+/* Expansão confortável da área de trabalho no Entity Builder */
+main {
+    max-width: 1240px !important;
+}
+
+#entity-builder-form {
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+}
+
+.field-row {
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.field-row.drag-over {
+    border-top: 3px solid var(--primary) !important;
+    background-color: var(--primary-light) !important;
+}
+
+.field-row.dragging {
+    opacity: 0.45;
+}
+
+.drag-handle {
+    cursor: grab;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    padding: 0 1px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.btn-order {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 12px;
+    padding: 0;
+    font-size: 7px;
+    line-height: 1;
+    background: #e2e8f0;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-order:hover {
+    background: #cbd5e1;
+    color: #0f172a;
+}
+
+.btn-order:disabled {
+    opacity: 0.25 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+#fields-table {
+    table-layout: auto;
+    width: 100%;
+}
+
+#fields-table th {
+    padding: 0.55rem 0.4rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+#fields-table td {
+    padding: 0.4rem 0.4rem;
+}
+
+#fields-table input[type="text"],
+#fields-table select {
+    margin-top: 0;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.85rem;
+    height: 33px;
+    border-radius: var(--radius-sm);
+}
+
+#fields-table input[type="checkbox"] {
+    margin: 0 auto;
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+.cell-muted-dash {
+    display: block;
+    text-align: center;
+    color: var(--text-light);
+    font-size: 0.85rem;
+    user-select: none;
+}
+</style>
+
 <a href="<?= url($app, '/dev/modules') ?>" class="back-link">&larr; Voltar para Módulos</a>
 
 <div style="margin-bottom: 2rem;">
@@ -17,7 +126,7 @@ $fields = $module['fields'] ?? [];
     </p>
 </div>
 
-<form method="post" action="<?= $isEdit ? url($app, '/dev/modules/' . ($module['slug'] ?? '') . '/edit') : url($app, '/dev/entity-builder') ?>" id="entity-builder-form">
+<form method="post" action="<?= $isEdit ? url($app, '/dev/modules/' . ($module['slug'] ?? '') . '/edit') : url($app, '/dev/entity-builder') ?>" id="entity-builder-form" onsubmit="reindexFields()">
     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
     <!-- Informações Gerais -->
@@ -40,14 +149,14 @@ $fields = $module['fields'] ?? [];
 
         <div class="grid-3" style="gap: 1.25rem; margin-bottom: 1rem;">
             <div>
-                <label for="slug">Slug da URL: <span style="color: var(--danger);">*</span></label>
-                <input type="text" id="slug" name="slug" value="<?= e($module['slug'] ?? '') ?>" placeholder="Ex: clientes" required pattern="[a-z0-9_-]{3,30}" <?= $isEdit ? 'readonly style="background-color: var(--card-bg-alt, #1e293b); cursor: not-allowed;"' : '' ?>>
+                <label for="slug">Slug da URL: <span style="color: var(--danger);">*</span> <?= $isEdit ? '<small class="badge badge-gray" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.35rem;">🔒 Fixo</small>' : '' ?></label>
+                <input type="text" id="slug" name="slug" value="<?= e($module['slug'] ?? '') ?>" placeholder="Ex: clientes" required pattern="[a-z0-9_-]{3,30}" <?= $isEdit ? 'readonly' : '' ?>>
                 <span class="muted" style="font-size: 0.75rem;">Rota de acesso: <code>/app/<?= e($module['slug'] ?? '{slug}') ?></code>.</span>
             </div>
 
             <div>
-                <label for="prefix">Prefixo de ID: <span style="color: var(--danger);">*</span></label>
-                <input type="text" id="prefix" name="prefix" value="<?= e($module['prefix'] ?? '') ?>" placeholder="Ex: cli" required maxlength="6" pattern="[a-z0-9]{2,6}" <?= $isEdit ? 'readonly style="background-color: var(--card-bg-alt, #1e293b); cursor: not-allowed;"' : '' ?>>
+                <label for="prefix">Prefixo de ID: <span style="color: var(--danger);">*</span> <?= $isEdit ? '<small class="badge badge-gray" style="font-size: 0.7rem; font-weight: normal; margin-left: 0.35rem;">🔒 Fixo</small>' : '' ?></label>
+                <input type="text" id="prefix" name="prefix" value="<?= e($module['prefix'] ?? '') ?>" placeholder="Ex: cli" required maxlength="6" pattern="[a-z0-9]{2,6}" <?= $isEdit ? 'readonly' : '' ?>>
                 <span class="muted" style="font-size: 0.75rem;">Identificadores gerados: <code><?= e($module['prefix'] ?? 'cli') ?>_001</code>.</span>
             </div>
 
@@ -68,8 +177,11 @@ $fields = $module['fields'] ?? [];
     <div class="card" style="margin-bottom: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
             <div>
-                <h2 style="font-size: 1.2rem; margin-bottom: 0.25rem;">2. Estrutura de Campos</h2>
-                <p class="muted" style="font-size: 0.85rem;">Os campos <code>id</code>, <code>created_at</code> e <code>updated_at</code> são gerenciados automaticamente pela plataforma.</p>
+                <h2 style="font-size: 1.2rem; margin-bottom: 0.25rem;">2. Estrutura de Campos e Ordenação</h2>
+                <p class="muted" style="font-size: 0.85rem;">
+                    Os campos <code>id</code>, <code>created_at</code> e <code>updated_at</code> são automáticos. 
+                    Utilize os botões <strong>▲</strong> e <strong>▼</strong> ou arraste as linhas para definir a ordem dos campos.
+                </p>
             </div>
             <button type="button" class="btn btn-secondary btn-sm" onclick="addFieldRow()">
                 + Adicionar Campo
@@ -80,20 +192,35 @@ $fields = $module['fields'] ?? [];
             <table id="fields-table">
                 <thead>
                     <tr>
-                        <th style="min-width: 150px;">Nome do Campo (snake_case)</th>
-                        <th style="min-width: 170px;">Rótulo (Label)</th>
-                        <th style="min-width: 140px;">Tipo de Dado</th>
-                        <th style="min-width: 180px;">Opções (para Select)</th>
-                        <th style="text-align: center; width: 80px;">Obrigatório</th>
-                        <th style="text-align: center; width: 70px;">Único</th>
-                        <th style="text-align: center; width: 70px;">Na Lista</th>
-                        <th style="text-align: center; width: 60px;">Ação</th>
+                        <th style="text-align: center; width: 68px;">Ordem</th>
+                        <th style="min-width: 130px;">Campo (ID)</th>
+                        <th style="min-width: 140px;">Rótulo (Label)</th>
+                        <th style="min-width: 120px;">Tipo</th>
+                        <th style="min-width: 150px;">Opções (Select)</th>
+                        <th style="text-align: center; width: 55px;" title="Campo Obrigatório">Obrig.</th>
+                        <th style="text-align: center; width: 50px;" title="Valor Único">Único</th>
+                        <th style="text-align: center; width: 50px;" title="Visível na Listagem">Lista</th>
+                        <th style="text-align: center; width: 45px;">Ação</th>
                     </tr>
                 </thead>
                 <tbody id="fields-tbody">
                     <?php if ($isEdit && !empty($fields)): ?>
                         <?php $idx = 0; foreach ($fields as $fname => $f): ?>
-                            <tr data-index="<?= $idx ?>">
+                            <?php 
+                            $isSelect = ($f['type'] ?? '') === 'select';
+                            $optionsVal = isset($f['options']) && is_array($f['options']) ? implode(', ', $f['options']) : '';
+                            ?>
+                            <tr class="field-row" data-index="<?= $idx ?>">
+                                <td style="text-align: center; white-space: nowrap; width: 68px;">
+                                    <div style="display: inline-flex; align-items: center; justify-content: center; gap: 3px;">
+                                        <span class="drag-handle" title="Arraste para reordenar">⋮⋮</span>
+                                        <div style="display: inline-flex; flex-direction: column; gap: 1px;">
+                                            <button type="button" class="btn-order btn-move-up" onclick="moveFieldUp(this)" title="Mover campo para cima">▲</button>
+                                            <button type="button" class="btn-order btn-move-down" onclick="moveFieldDown(this)" title="Mover campo para baixo">▼</button>
+                                        </div>
+                                        <span class="row-order-number" style="font-weight: 700; font-size: 0.78rem; color: var(--text-muted); min-width: 20px;">#<?= $idx + 1 ?></span>
+                                    </div>
+                                </td>
                                 <td>
                                     <input type="text" name="fields[<?= $idx ?>][name]" value="<?= e($fname) ?>" placeholder="ex: nome" required pattern="[a-z0-9_]{2,30}" style="font-family: monospace;">
                                 </td>
@@ -106,15 +233,13 @@ $fields = $module['fields'] ?? [];
                                         <option value="text" <?= ($f['type'] ?? '') === 'text' ? 'selected' : '' ?>>Texto Longo</option>
                                         <option value="number" <?= ($f['type'] ?? '') === 'number' ? 'selected' : '' ?>>Número</option>
                                         <option value="date" <?= ($f['type'] ?? '') === 'date' ? 'selected' : '' ?>>Data</option>
-                                        <option value="select" <?= ($f['type'] ?? '') === 'select' ? 'selected' : '' ?>>Seleção (Select)</option>
-                                        <option value="boolean" <?= ($f['type'] ?? '') === 'boolean' ? 'selected' : '' ?>>Sim / Não (Boolean)</option>
+                                        <option value="select" <?= $isSelect ? 'selected' : '' ?>>Seleção (Select)</option>
+                                        <option value="boolean" <?= ($f['type'] ?? '') === 'boolean' ? 'selected' : '' ?>>Sim / Não</option>
                                     </select>
                                 </td>
                                 <td>
-                                    <?php
-                                    $optionsVal = isset($f['options']) && is_array($f['options']) ? implode(', ', $f['options']) : '';
-                                    ?>
-                                    <input type="text" name="fields[<?= $idx ?>][options]" value="<?= e($optionsVal) ?>" placeholder="Opção 1, Opção 2" style="display: <?= ($f['type'] ?? '') === 'select' ? 'block' : 'none' ?>;">
+                                    <input type="text" name="fields[<?= $idx ?>][options]" value="<?= e($optionsVal) ?>" placeholder="Opção 1, Opção 2" style="display: <?= $isSelect ? 'block' : 'none' ?>;">
+                                    <span class="cell-muted-dash" style="display: <?= $isSelect ? 'none' : 'block' ?>;">—</span>
                                 </td>
                                 <td style="text-align: center;">
                                     <input type="checkbox" name="fields[<?= $idx ?>][required]" value="1" <?= !empty($f['required']) ? 'checked' : '' ?>>
@@ -126,12 +251,22 @@ $fields = $module['fields'] ?? [];
                                     <input type="checkbox" name="fields[<?= $idx ?>][list]" value="1" <?= (!isset($f['list']) || $f['list'] === true) ? 'checked' : '' ?>>
                                 </td>
                                 <td style="text-align: center;">
-                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeFieldRow(this)" title="Remover Campo" style="padding: 0.25rem 0.5rem;">&times;</button>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeFieldRow(this)" title="Remover Campo" style="padding: 0.2rem 0.45rem; font-size: 0.9rem; line-height: 1;">&times;</button>
                                 </td>
                             </tr>
                         <?php $idx++; endforeach; ?>
                     <?php else: ?>
-                        <tr data-index="0">
+                        <tr class="field-row" data-index="0">
+                            <td style="text-align: center; white-space: nowrap; width: 68px;">
+                                <div style="display: inline-flex; align-items: center; justify-content: center; gap: 3px;">
+                                    <span class="drag-handle" title="Arraste para reordenar">⋮⋮</span>
+                                    <div style="display: inline-flex; flex-direction: column; gap: 1px;">
+                                        <button type="button" class="btn-order btn-move-up" onclick="moveFieldUp(this)" title="Mover campo para cima">▲</button>
+                                        <button type="button" class="btn-order btn-move-down" onclick="moveFieldDown(this)" title="Mover campo para baixo">▼</button>
+                                    </div>
+                                    <span class="row-order-number" style="font-weight: 700; font-size: 0.78rem; color: var(--text-muted); min-width: 20px;">#1</span>
+                                </div>
+                            </td>
                             <td>
                                 <input type="text" name="fields[0][name]" value="nome" placeholder="ex: nome" required pattern="[a-z0-9_]{2,30}" style="font-family: monospace;">
                             </td>
@@ -145,11 +280,12 @@ $fields = $module['fields'] ?? [];
                                     <option value="number">Número</option>
                                     <option value="date">Data</option>
                                     <option value="select">Seleção (Select)</option>
-                                    <option value="boolean">Sim / Não (Boolean)</option>
+                                    <option value="boolean">Sim / Não</option>
                                 </select>
                             </td>
                             <td>
                                 <input type="text" name="fields[0][options]" placeholder="Opção 1, Opção 2" style="display: none;">
+                                <span class="cell-muted-dash">—</span>
                             </td>
                             <td style="text-align: center;">
                                 <input type="checkbox" name="fields[0][required]" value="1" checked>
@@ -161,7 +297,7 @@ $fields = $module['fields'] ?? [];
                                 <input type="checkbox" name="fields[0][list]" value="1" checked>
                             </td>
                             <td style="text-align: center;">
-                                <button type="button" class="btn btn-danger btn-sm" onclick="removeFieldRow(this)" title="Remover Campo" style="padding: 0.25rem 0.5rem;">&times;</button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removeFieldRow(this)" title="Remover Campo" style="padding: 0.2rem 0.45rem; font-size: 0.9rem; line-height: 1;">&times;</button>
                             </td>
                         </tr>
                     <?php endif; ?>
@@ -223,21 +359,121 @@ document.getElementById('prefix').addEventListener('input', function() {
 function handleTypeChange(selectElement) {
     const row = selectElement.closest('tr');
     const optionsInput = row.querySelector('input[name*="[options]"]');
+    const dash = row.querySelector('.cell-muted-dash');
     if (selectElement.value === 'select') {
         optionsInput.style.display = 'block';
         optionsInput.required = true;
+        if (dash) dash.style.display = 'none';
+        optionsInput.focus();
     } else {
         optionsInput.style.display = 'none';
         optionsInput.required = false;
+        if (dash) dash.style.display = 'block';
     }
+}
+
+function moveFieldUp(btn) {
+    const row = btn.closest('tr');
+    const prev = row.previousElementSibling;
+    if (prev) {
+        row.parentNode.insertBefore(row, prev);
+        reindexFields();
+    }
+}
+
+function moveFieldDown(btn) {
+    const row = btn.closest('tr');
+    const next = row.nextElementSibling;
+    if (next) {
+        row.parentNode.insertBefore(next, row);
+        reindexFields();
+    }
+}
+
+function reindexFields() {
+    const tbody = document.getElementById('fields-tbody');
+    const rows = tbody.querySelectorAll('tr.field-row');
+    rows.forEach((tr, index) => {
+        tr.dataset.index = index;
+        
+        const orderSpan = tr.querySelector('.row-order-number');
+        if (orderSpan) {
+            orderSpan.textContent = '#' + (index + 1);
+        }
+        
+        const btnUp = tr.querySelector('.btn-move-up');
+        const btnDown = tr.querySelector('.btn-move-down');
+        if (btnUp) btnUp.disabled = (index === 0);
+        if (btnDown) btnDown.disabled = (index === rows.length - 1);
+        
+        tr.querySelectorAll('input, select').forEach(input => {
+            if (input.name) {
+                input.name = input.name.replace(/fields\[\d+\]/, 'fields[' + index + ']');
+            }
+        });
+    });
+}
+
+let draggedRow = null;
+
+function setupDragAndDrop(tr) {
+    tr.draggable = true;
+    tr.addEventListener('dragstart', function(e) {
+        draggedRow = tr;
+        tr.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    tr.addEventListener('dragend', function() {
+        draggedRow = null;
+        tr.classList.remove('dragging');
+        document.querySelectorAll('#fields-tbody tr.field-row').forEach(r => r.classList.remove('drag-over'));
+        reindexFields();
+    });
+    tr.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (draggedRow && draggedRow !== tr) {
+            tr.classList.add('drag-over');
+        }
+    });
+    tr.addEventListener('dragleave', function() {
+        tr.classList.remove('drag-over');
+    });
+    tr.addEventListener('drop', function(e) {
+        e.preventDefault();
+        tr.classList.remove('drag-over');
+        if (draggedRow && draggedRow !== tr) {
+            const tbody = tr.parentNode;
+            const rows = Array.from(tbody.querySelectorAll('tr.field-row'));
+            const fromIndex = rows.indexOf(draggedRow);
+            const toIndex = rows.indexOf(tr);
+            if (fromIndex < toIndex) {
+                tbody.insertBefore(draggedRow, tr.nextSibling);
+            } else {
+                tbody.insertBefore(draggedRow, tr);
+            }
+            reindexFields();
+        }
+    });
 }
 
 function addFieldRow() {
     const tbody = document.getElementById('fields-tbody');
     const idx = fieldCount++;
     const tr = document.createElement('tr');
+    tr.className = 'field-row';
     tr.dataset.index = idx;
     tr.innerHTML = `
+        <td style="text-align: center; white-space: nowrap; width: 68px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 3px;">
+                <span class="drag-handle" title="Arraste para reordenar">⋮⋮</span>
+                <div style="display: inline-flex; flex-direction: column; gap: 1px;">
+                    <button type="button" class="btn-order btn-move-up" onclick="moveFieldUp(this)" title="Mover campo para cima">▲</button>
+                    <button type="button" class="btn-order btn-move-down" onclick="moveFieldDown(this)" title="Mover campo para baixo">▼</button>
+                </div>
+                <span class="row-order-number" style="font-weight: 700; font-size: 0.78rem; color: var(--text-muted); min-width: 20px;">#${idx + 1}</span>
+            </div>
+        </td>
         <td>
             <input type="text" name="fields[${idx}][name]" placeholder="ex: campo_${idx}" required pattern="[a-z0-9_]{2,30}" style="font-family: monospace;">
         </td>
@@ -251,11 +487,12 @@ function addFieldRow() {
                 <option value="number">Número</option>
                 <option value="date">Data</option>
                 <option value="select">Seleção (Select)</option>
-                <option value="boolean">Sim / Não (Boolean)</option>
+                <option value="boolean">Sim / Não</option>
             </select>
         </td>
         <td>
             <input type="text" name="fields[${idx}][options]" placeholder="Opção 1, Opção 2" style="display: none;">
+            <span class="cell-muted-dash">—</span>
         </td>
         <td style="text-align: center;">
             <input type="checkbox" name="fields[${idx}][required]" value="1">
@@ -267,18 +504,27 @@ function addFieldRow() {
             <input type="checkbox" name="fields[${idx}][list]" value="1" checked>
         </td>
         <td style="text-align: center;">
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeFieldRow(this)" title="Remover Campo" style="padding: 0.25rem 0.5rem;">&times;</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeFieldRow(this)" title="Remover Campo" style="padding: 0.2rem 0.45rem; font-size: 0.9rem; line-height: 1;">&times;</button>
         </td>
     `;
     tbody.appendChild(tr);
+    setupDragAndDrop(tr);
+    reindexFields();
+
+    const nameInput = tr.querySelector('input[type="text"]');
+    if (nameInput) nameInput.focus();
 }
 
 function removeFieldRow(btn) {
     const tbody = document.getElementById('fields-tbody');
-    if (tbody.querySelectorAll('tr').length <= 1) {
+    if (tbody.querySelectorAll('tr.field-row').length <= 1) {
         alert('A entidade deve possuir pelo menos um campo customizado.');
         return;
     }
     btn.closest('tr').remove();
+    reindexFields();
 }
+
+document.querySelectorAll('#fields-tbody tr.field-row').forEach(tr => setupDragAndDrop(tr));
+reindexFields();
 </script>
