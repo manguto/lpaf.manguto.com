@@ -24,7 +24,7 @@ final class SetupService
         $storage->write('user_roles.csv', ['user_id', 'role_id'], [['user_id' => 'usr_001', 'role_id' => 'role_dev']]);
         $rolePermissions = [['role_id' => 'role_dev', 'permission_id' => '*']];
         foreach (['dashboard.view', 'profile.edit'] as $permission) $rolePermissions[] = ['role_id' => 'role_user', 'permission_id' => $permission];
-        foreach (['users.view', 'users.create', 'users.edit', 'users.manage', 'roles.view', 'roles.create', 'roles.edit', 'roles.manage', 'audit.view'] as $permission) $rolePermissions[] = ['role_id' => 'role_admin', 'permission_id' => $permission];
+        foreach (['dashboard.view', 'profile.edit', 'users.view', 'users.create', 'users.edit', 'users.manage', 'roles.view', 'roles.create', 'roles.edit', 'roles.manage', 'audit.view'] as $permission) $rolePermissions[] = ['role_id' => 'role_admin', 'permission_id' => $permission];
         $storage->write('role_permissions.csv', ['role_id', 'permission_id'], $rolePermissions);
         $storage->write('settings.csv', ['key', 'value'], [['key' => 'installed', 'value' => '1'], ['key' => 'app_name', 'value' => trim($appName)], ['key' => 'app_version', 'value' => '0.1.0']]);
         $storage->write('audit_log.csv', ['id', 'created_at', 'user_id', 'action', 'details'], []);

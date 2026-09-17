@@ -22,6 +22,12 @@ final class Response
     public static function error(int $status, string $message): never
     {
         http_response_code($status);
+        $errorView = dirname(__DIR__, 2) . '/views/errors/error.php';
+        if (is_file($errorView)) {
+            $basePath = self::$basePath;
+            include $errorView;
+            exit;
+        }
         echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
         exit;
     }
