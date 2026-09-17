@@ -767,7 +767,7 @@ O setup deverá solicitar pelo menos:
 
 * nome da aplicação;
 * nome do primeiro usuário;
-* login ou e-mail;
+* login (nome de usuário único, sem @);
 * senha;
 * confirmação da senha.
 
@@ -869,33 +869,28 @@ O sistema não precisa ser otimizado para alta concorrência.
 
 ## 35. Backup
 
-O Dev-End deverá futuramente permitir backup simples.
+O Dev-End possui mecanismo integrado de backups e recuperação de dados.
 
-Exemplo:
+Recursos implementados:
 
-```text
-storage/backups/2026-09-17_10-30-00/
-```
-
-Os arquivos CSV deverão ser copiados integralmente.
+* Geração de snapshots com carimbo de data/hora (`storage/backups/YYYY-MM-DD_HH-mm-ss_rotulo/`);
+* Metadados em `meta.json` (tamanho total, arquivos copiados, autor e data);
+* Empacotamento dinâmico e download do snapshot em formato `.zip`;
+* Restauração atômica (rollback) dos arquivos CSV para `storage/data/`;
+* Salvaguarda automática (`pre_restore_*`) gerada antes de qualquer substituição de dados;
+* Registro dos eventos de backup e restauração na auditoria.
 
 ## 36. Auditoria
 
-Alterações administrativas relevantes deverão ser registradas.
+Alterações administrativas relevantes são registradas em `storage/logs/audit_log.csv`.
 
-Exemplos:
+Recursos implementados:
 
-* login;
-* logout;
-* falha de autenticação;
-* criação de usuário;
-* alteração de usuário;
-* alteração de perfil;
-* alteração de permissões;
-* criação de entidade;
-* alteração de entidade;
-* geração de módulo;
-* alteração estrutural pelo Dev-End.
+* Gravação atômica em modo append (`fopen(..., 'ab')` com `flock(LOCK_EX)`), garantindo $O(1)$ por evento e prevenindo corrupção de concorrência;
+* Identificadores únicos e seguros por evento (`aud_YYYYmmddHis_xxxx`);
+* Visualizador de logs no Dev-End (`/dev/logs`), protegido pela permissão `dev.logs`;
+* Filtragem dinâmica por tipo de ação e resolução dos nomes e logins dos usuários responsáveis;
+* Eventos monitorados: login, falha de autenticação, logout, criação/atualização de usuários, alteração de perfis, criação e restauração de backups.
 
 Nunca registrar senhas ou segredos.
 
@@ -996,22 +991,22 @@ sem reescrever Controllers e regras de negócio.
 
 ## 40. Estado atual
 
-O projeto encontra-se em fase inicial.
+O projeto conta com sua fundação central concluída e operacional.
 
-Prioridades:
+Status do roadmap:
 
-1. estrutura base;
-2. roteamento;
-3. Views;
-4. setup;
-5. autenticação;
-6. RBAC;
-7. persistência CSV;
-8. administração básica;
-9. Dev-End básico;
-10. motor de módulos;
-11. Entity Builder;
-12. CRUD declarativo.
+1. [x] Estrutura base (Front Controller, Config, Request, Response, Session)
+2. [x] Roteamento centralizado com parâmetros regex e method spoofing
+3. [x] Camada de Views nativas com engine de layout e tela moderna de erros (403, 404, 500)
+4. [x] Setup inicial guiado e protegido (`/setup`)
+5. [x] Autenticação segura por sessões PHP com `password_hash()` e login estrito
+6. [x] Controle de acesso RBAC granular (`role_user`, `role_admin`, `role_dev`)
+7. [x] Persistência em arquivos CSV com travas `flock()` e escrita atômica
+8. [x] Administração básica (gestão de usuários e perfis de acesso)
+9. [x] Dev-End consolidado (diagnóstico, backups com rollback/download e visualizador de logs)
+10. [ ] Motor de módulos isolados (`modules/`)
+11. [ ] Entity Builder
+12. [ ] CRUD declarativo por metadados
 
 ## 41. Contribuições
 
@@ -1033,15 +1028,16 @@ A licença do projeto será definida antes da primeira versão pública estável
 
 ## 43. Fundação implementada
 
-A primeira fundação funcional utiliza PHP 8.2+, Composer apenas para autoload PSR-4, sessões PHP e CSV. O DocumentRoot deve apontar para `public/`.
+A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload PSR-4, sessões nativas PHP com cookies protegidos e persistência CSV. O DocumentRoot do servidor web deve apontar para `public/`.
 
-### Instalação local
+### Instalação e execução local
 
-1. Copie `.env.example` para `.env` e ajuste `APP_URL`, `APP_DEBUG` e, opcionalmente, `APP_SETUP_KEY`.
-2. Execute `composer install` na raiz do projeto.
-3. Aponte o Apache para o diretório `public/` ou use `php -S localhost:8000 -t public public/index.php`.
-4. Acesse `/setup`, crie o primeiro usuário e entre no sistema. O primeiro usuário recebe `role_dev`.
-
-Para executar a verificação rápida: `php tests/verify.php`. Ela usa um diretório temporário e não altera o storage da aplicação.
-
-Nesta etapa foram implementados setup, autenticação, RBAC, administração básica, Dev-End diagnóstico, auditoria, CSRF e persistência CSV. Entity Builder, geração de módulos e CRUD declarativo permanecem pendentes conforme planejado.
+1. Copie `.env.example` para `.env` e configure `APP_URL`, `APP_DEBUG` e, opcionalmente, `APP_SETUP_KEY`.
+2. Execute `composer install` na raiz do projeto para gerar o autoloader PSR-4.
+3. Inicie o servidor embutido do PHP (`php -S localhost:8000 -t public public/index.php`) ou configure o virtualhost do Apache para o diretório `public/`.
+4. Acesse `/setup`, crie o primeiro usuário (com perfil automático Desenvolvedor) e entre no sistema.
+5. Para rodar a suíte completa de verificação automatizada:
+   ```bash
+   php tests/verify.php
+   ```
+   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda) e auditoria (escrita em append e consultas).
