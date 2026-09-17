@@ -1,0 +1,95 @@
+:root {
+    font-family: Arial, sans-serif;
+    color: #17202a;
+    background: #f4f6f8;
+}
+
+body {
+    margin: 0;
+}
+
+header {
+    background: #123047;
+    color: white;
+    padding: 1rem 5%;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+nav a,
+header a {
+    color: white;
+    margin-right: 1rem;
+}
+
+main {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+form,
+section,
+table {
+    background: white;
+    padding: 1rem;
+    border: 1px solid #dce2e7;
+    border-radius: 4px;
+}
+
+label {
+    display: block;
+    margin-top: .8rem;
+    font-weight: bold;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: .6rem;
+    margin-top: .3rem;
+}
+
+button,
+.button {
+    display: inline-block;
+    background: #176b87;
+    color: white;
+    border: 0;
+    padding: .65rem 1rem;
+    margin-top: 1rem;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    padding: 0;
+}
+
+th,
+td {
+    text-align: left;
+    padding: .65rem;
+    border-bottom: 1px solid #e7ebee;
+}
+
+.error {
+    background: #ffe3e3;
+    color: #8e2020;
+    padding: .8rem;
+}
+
+.success {
+    background: #e2f4e8;
+    padding: .8rem;
+}
+
+.muted {
+    color: #65727c;
+}

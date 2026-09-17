@@ -1030,3 +1030,18 @@ Mudanças arquiteturais significativas deverão ser justificadas.
 ## 42. Licença
 
 A licença do projeto será definida antes da primeira versão pública estável.
+
+## 43. Fundação implementada
+
+A primeira fundação funcional utiliza PHP 8.2+, Composer apenas para autoload PSR-4, sessões PHP e CSV. O DocumentRoot deve apontar para `public/`.
+
+### Instalação local
+
+1. Copie `.env.example` para `.env` e ajuste `APP_URL`, `APP_DEBUG` e, opcionalmente, `APP_SETUP_KEY`.
+2. Execute `composer install` na raiz do projeto.
+3. Aponte o Apache para o diretório `public/` ou use `php -S localhost:8000 -t public public/index.php`.
+4. Acesse `/setup`, crie o primeiro usuário e entre no sistema. O primeiro usuário recebe `role_dev`.
+
+Para executar a verificação rápida: `php tests/verify.php`. Ela usa um diretório temporário e não altera o storage da aplicação.
+
+Nesta etapa foram implementados setup, autenticação, RBAC, administração básica, Dev-End diagnóstico, auditoria, CSRF e persistência CSV. Entity Builder, geração de módulos e CRUD declarativo permanecem pendentes conforme planejado.

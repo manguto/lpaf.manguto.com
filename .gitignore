@@ -1,0 +1,7 @@
+/vendor/
+/.env
+/storage/data/*.csv
+/storage/logs/*.csv
+/storage/backups/*
+/storage/tmp/*
+!.gitkeep
