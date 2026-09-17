@@ -343,8 +343,8 @@ if ($reverseData[0]['items'][0]['numero'] !== 'CTR-2026-001') {
 $refCountMethod = new ReflectionMethod($crudCtrl, 'resolveReverseReferenceCounts');
 $refCountMethod->setAccessible(true);
 $refCounts = $refCountMethod->invoke($crudCtrl, $clientesConfig, [$cli1]);
-if (($refCounts['cli_001']['Contratos Teste'] ?? 0) !== 1) {
-    throw new RuntimeException('Cálculo de contagem de vínculos reversos incorreto.');
+if (($refCounts['cli_001']['restrict']['Contratos Teste'] ?? 0) !== 1 || empty($refCounts['cli_001']['has_restrict'])) {
+    throw new RuntimeException('Cálculo de contagem de vínculos reversos (restrict) incorreto.');
 }
 
 // Testa filtro por relação na listagem do filho (Demanda 2)
@@ -358,49 +358,68 @@ if (count($filteredByCli999) !== 0) {
     throw new RuntimeException('Filtro por relação inexistente deveria retornar lista vazia.');
 }
 
-// Testa integridade referencial: simula verificação de exclusão do pai
-$allMods = $app->modules->all();
-$hasReference = false;
-foreach ($allMods as $otherSlug => $otherMod) {
-    foreach ($otherMod['fields'] as $fKey => $fConf) {
-        if (($fConf['type'] ?? '') === 'relation' && ($fConf['target'] ?? '') === 'clientes_test') {
-            $otherRepo = $app->modules->repository($otherSlug);
-            $foundRefs = array_filter($otherRepo->all(), fn($r) => ($r[$fKey] ?? '') === 'cli_001');
-            if (!empty($foundRefs)) {
-                $hasReference = true;
-            }
-        }
-    }
-}
-if (!$hasReference) {
-    throw new RuntimeException('Falha na detecção de integridade referencial: exclusão do pai deveria ser bloqueada.');
+// Testa integridade referencial: on_delete = restrict (bloqueio de exclusão)
+$checkMethod = new ReflectionMethod($crudCtrl, 'checkDeletionRestrictions');
+$checkMethod->setAccessible(true);
+$restrictErrors = [];
+$checkMethod->invokeArgs($crudCtrl, ['clientes_test', 'cli_001', &$restrictErrors]);
+if (empty($restrictErrors)) {
+    throw new RuntimeException('Falha na detecção de integridade referencial: exclusão do pai deveria ser bloqueada por restrict.');
 }
 
-// Remove o registro filho
-$cntRepo->delete('cnt_001');
-if ($cntRepo->find('cnt_001') !== null) {
-    throw new RuntimeException('Falha ao remover registro filho.');
+// Testa política on_delete = set_null (Demanda 3)
+$contratosConfig['fields']['cliente_id']['on_delete'] = 'set_null';
+$contratosConfig['fields']['cliente_id']['required'] = false;
+file_put_contents($contratosDir . '/module.php', "<?php\nreturn " . var_export($contratosConfig, true) . ";\n");
+$app->modules->reload();
+
+$setNullErrors = [];
+$checkMethod->invokeArgs($crudCtrl, ['clientes_test', 'cli_001', &$setNullErrors]);
+if (!empty($setNullErrors)) {
+    throw new RuntimeException('checkDeletionRestrictions não deveria bloquear exclusão com política set_null.');
 }
 
-// Agora verifica que o pai pode ser excluído
-$hasReferenceAfter = false;
-foreach ($allMods as $otherSlug => $otherMod) {
-    foreach ($otherMod['fields'] as $fKey => $fConf) {
-        if (($fConf['type'] ?? '') === 'relation' && ($fConf['target'] ?? '') === 'clientes_test') {
-            $otherRepo = $app->modules->repository($otherSlug);
-            $foundRefs = array_filter($otherRepo->all(), fn($r) => ($r[$fKey] ?? '') === 'cli_001');
-            if (!empty($foundRefs)) {
-                $hasReferenceAfter = true;
-            }
-        }
-    }
+$execMethod = new ReflectionMethod($crudCtrl, 'executeRelationPolicies');
+$execMethod->setAccessible(true);
+$unlinkedCount = 0;
+$cascadeCount = 0;
+$execMethod->invokeArgs($crudCtrl, ['clientes_test', 'cli_001', &$unlinkedCount, &$cascadeCount]);
+if ($unlinkedCount !== 1 || $cascadeCount !== 0) {
+    throw new RuntimeException('Falha na execução da política set_null (contagem de desvinculados incorreta).');
 }
-if ($hasReferenceAfter) {
-    throw new RuntimeException('Pai ainda considerado referenciado após exclusão do filho.');
+$cntAfterSetNull = $cntRepo->find('cnt_001');
+if (!$cntAfterSetNull || $cntAfterSetNull['cliente_id'] !== '') {
+    throw new RuntimeException('Falha ao aplicar set_null: campo cliente_id deveria estar vazio no filho.');
 }
+
+// Testa política on_delete = cascade (Demanda 3)
+// Vincula novamente o contrato ao cliente
+$cntRepo->update('cnt_001', ['cliente_id' => 'cli_001']);
+$contratosConfig['fields']['cliente_id']['on_delete'] = 'cascade';
+file_put_contents($contratosDir . '/module.php', "<?php\nreturn " . var_export($contratosConfig, true) . ";\n");
+$app->modules->reload();
+
+$cascadeErrors = [];
+$checkMethod->invokeArgs($crudCtrl, ['clientes_test', 'cli_001', &$cascadeErrors]);
+if (!empty($cascadeErrors)) {
+    throw new RuntimeException('checkDeletionRestrictions não deveria bloquear exclusão com política cascade pura.');
+}
+
+$unlinkedCount = 0;
+$cascadeCount = 0;
+$execMethod->invokeArgs($crudCtrl, ['clientes_test', 'cli_001', &$unlinkedCount, &$cascadeCount]);
+if ($unlinkedCount !== 0 || $cascadeCount !== 1) {
+    throw new RuntimeException('Falha na execução da política cascade (contagem de exclusões em cascata incorreta).');
+}
+$cntAfterCascade = $cntRepo->find('cnt_001');
+if ($cntAfterCascade !== null) {
+    throw new RuntimeException('Falha ao aplicar cascade: registro filho deveria ter sido removido.');
+}
+
+// Agora exclui o pai livremente
 $cliRepo->delete('cli_001');
 if ($cliRepo->find('cli_001') !== null) {
-    throw new RuntimeException('Falha ao remover pai após liberação de referências.');
+    throw new RuntimeException('Falha ao remover pai após exclusão em cascata do filho.');
 }
 
 // Limpeza dos módulos de teste de relacionamento
@@ -409,7 +428,7 @@ rmdir($clientesDir);
 unlink($contratosDir . '/module.php');
 rmdir($contratosDir);
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial).\n";
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial e políticas on_delete: restrict, set_null e cascade).\n";
 
 
 

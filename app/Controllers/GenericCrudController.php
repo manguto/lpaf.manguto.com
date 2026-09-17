@@ -89,6 +89,7 @@ final class GenericCrudController extends Controller
                         'module' => $childModule,
                         'field_key' => $fKey,
                         'field_label' => $fConfig['label'] ?? ucfirst($fKey),
+                        'on_delete' => $fConfig['on_delete'] ?? 'restrict',
                         'items' => $matching,
                         'display_fields' => $displayFields,
                         'create_url' => "/app/{$childSlug}/create?{$fKey}=" . urlencode($parentId),
@@ -105,22 +106,66 @@ final class GenericCrudController extends Controller
         $parentSlug = $module['slug'];
         $allModules = $this->app->modules->all();
         $itemIds = array_column($items, 'id');
-        $counts = array_fill_keys($itemIds, []);
+        
+        $counts = [];
+        foreach ($itemIds as $id) {
+            $counts[$id] = [
+                'has_restrict' => false,
+                'has_cascade' => false,
+                'has_set_null' => false,
+                'total_restrict' => 0,
+                'total_cascade' => 0,
+                'total_set_null' => 0,
+                'restrict' => [],
+                'cascade' => [],
+                'set_null' => [],
+                'restrict_text' => '',
+                'cascade_text' => '',
+                'set_null_text' => '',
+            ];
+        }
 
         foreach ($allModules as $childSlug => $childModule) {
             foreach (($childModule['fields'] ?? []) as $fKey => $fConfig) {
                 if (($fConfig['type'] ?? '') === 'relation' && ($fConfig['target'] ?? '') === $parentSlug) {
+                    $policy = $fConfig['on_delete'] ?? 'restrict';
+                    if (!in_array($policy, ['restrict', 'set_null', 'cascade'], true)) {
+                        $policy = 'restrict';
+                    }
                     $childRepo = $this->app->modules->repository($childSlug);
                     $childRows = $childRepo ? $childRepo->all() : [];
                     foreach ($childRows as $cRow) {
                         $val = (string) ($cRow[$fKey] ?? '');
                         if ($val !== '' && isset($counts[$val])) {
-                            $counts[$val][$childModule['name']] = ($counts[$val][$childModule['name']] ?? 0) + 1;
+                            $counts[$val][$policy][$childModule['name']] = ($counts[$val][$policy][$childModule['name']] ?? 0) + 1;
+                            $counts[$val]['total_' . $policy]++;
+                            $counts[$val]['has_' . $policy] = true;
                         }
                     }
                 }
             }
         }
+
+        foreach ($counts as $id => &$data) {
+            $rParts = [];
+            foreach ($data['restrict'] as $mName => $c) {
+                $rParts[] = "{$c} em {$mName}";
+            }
+            $data['restrict_text'] = implode(', ', $rParts);
+
+            $cParts = [];
+            foreach ($data['cascade'] as $mName => $c) {
+                $cParts[] = "{$c} em {$mName}";
+            }
+            $data['cascade_text'] = implode(', ', $cParts);
+
+            $sParts = [];
+            foreach ($data['set_null'] as $mName => $c) {
+                $sParts[] = "{$c} em {$mName}";
+            }
+            $data['set_null_text'] = implode(', ', $sParts);
+        }
+        unset($data);
 
         return $counts;
     }
@@ -355,42 +400,145 @@ final class GenericCrudController extends Controller
         Response::redirect("/app/{$slug}");
     }
 
-    public function delete(Request $request, array $params): void
+    private function checkDeletionRestrictions(string $parentSlug, string $parentId, array &$errors, array &$visited = []): void
     {
-        $module = $this->resolveModule($request, $params);
-        $repo = $this->app->modules->repository($module['slug']);
-        $slug = $module['slug'];
-        $id = $params['id'] ?? '';
+        $visitKey = "{$parentSlug}:{$parentId}";
+        if (isset($visited[$visitKey])) {
+            return;
+        }
+        $visited[$visitKey] = true;
 
-        // Proteção de Integridade Referencial (Impede exclusão se houver vínculos ativos)
         $allModules = $this->app->modules->all();
-        foreach ($allModules as $otherSlug => $otherModule) {
-            foreach (($otherModule['fields'] ?? []) as $fKey => $fConfig) {
-                if (($fConfig['type'] ?? '') === 'relation' && ($fConfig['target'] ?? '') === $slug) {
-                    $otherRepo = $this->app->modules->repository($otherSlug);
-                    if ($otherRepo) {
-                        $referencing = array_filter($otherRepo->all(), fn($r) => ($r[$fKey] ?? '') === (string) $id);
-                        if (!empty($referencing)) {
-                            $count = count($referencing);
-                            Session::flash('error', "Não é possível excluir este registro pois ele possui {$count} vínculo(s) no módulo '{$otherModule['name']}'.");
-                            Response::redirect("/app/{$slug}");
-                            return;
+        foreach ($allModules as $childSlug => $childModule) {
+            foreach (($childModule['fields'] ?? []) as $fKey => $fConfig) {
+                if (($fConfig['type'] ?? '') === 'relation' && ($fConfig['target'] ?? '') === $parentSlug) {
+                    $policy = $fConfig['on_delete'] ?? 'restrict';
+                    $childRepo = $this->app->modules->repository($childSlug);
+                    if (!$childRepo) continue;
+
+                    $referencing = array_filter($childRepo->all(), fn($r) => ($r[$fKey] ?? '') === $parentId);
+                    $count = count($referencing);
+                    if ($count === 0) continue;
+
+                    if ($policy === 'restrict') {
+                        $errors[] = "{$count} vínculo(s) no módulo '{$childModule['name']}'";
+                    } elseif ($policy === 'cascade') {
+                        foreach ($referencing as $childRow) {
+                            $childId = (string) ($childRow['id'] ?? '');
+                            if ($childId !== '') {
+                                $this->checkDeletionRestrictions($childSlug, $childId, $errors, $visited);
+                            }
                         }
                     }
                 }
             }
         }
+    }
 
-        if ($repo) {
-            $repo->delete($id);
-            (new AuditService($this->app->storage))->log(
-                $slug . '_deleted',
-                $this->user()['id'] ?? null,
-                "ID: {$id}"
-            );
+    private function executeRelationPolicies(string $parentSlug, string $parentId, int &$unlinkedCount, int &$cascadeCount, array &$visited = []): void
+    {
+        $visitKey = "{$parentSlug}:{$parentId}";
+        if (isset($visited[$visitKey])) {
+            return;
+        }
+        $visited[$visitKey] = true;
+
+        $allModules = $this->app->modules->all();
+        foreach ($allModules as $childSlug => $childModule) {
+            foreach (($childModule['fields'] ?? []) as $fKey => $fConfig) {
+                if (($fConfig['type'] ?? '') === 'relation' && ($fConfig['target'] ?? '') === $parentSlug) {
+                    $policy = $fConfig['on_delete'] ?? 'restrict';
+                    $childRepo = $this->app->modules->repository($childSlug);
+                    if (!$childRepo) continue;
+
+                    $referencing = array_filter($childRepo->all(), fn($r) => ($r[$fKey] ?? '') === $parentId);
+                    if (empty($referencing)) continue;
+
+                    if ($policy === 'set_null') {
+                        foreach ($referencing as $childRow) {
+                            $childId = (string) ($childRow['id'] ?? '');
+                            if ($childId !== '') {
+                                $childRepo->update($childId, [$fKey => '', 'updated_at' => date('c')]);
+                                $unlinkedCount++;
+                                (new AuditService($this->app->storage))->log(
+                                    $childSlug . '_unlinked',
+                                    $this->user()['id'] ?? null,
+                                    "ID: {$childId}, desvinculado de {$parentSlug}: {$parentId} (campo: {$fKey})"
+                                );
+                            }
+                        }
+                    } elseif ($policy === 'cascade') {
+                        foreach ($referencing as $childRow) {
+                            $childId = (string) ($childRow['id'] ?? '');
+                            if ($childId !== '') {
+                                $this->executeRelationPolicies($childSlug, $childId, $unlinkedCount, $cascadeCount, $visited);
+                                $childRepo->delete($childId);
+                                $cascadeCount++;
+                                (new AuditService($this->app->storage))->log(
+                                    $childSlug . '_cascade_deleted',
+                                    $this->user()['id'] ?? null,
+                                    "ID: {$childId}, cascade de {$parentSlug}: {$parentId}"
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public function delete(Request $request, array $params): void
+    {
+        $module = $this->resolveModule($request, $params);
+        $repo = $this->app->modules->repository($module['slug']);
+        $slug = $module['slug'];
+        $id = (string) ($params['id'] ?? '');
+
+        if (!$repo || !$repo->find($id)) {
+            Session::flash('error', "Registro de {$module['entity']} não encontrado.");
+            Response::redirect("/app/{$slug}");
+            return;
         }
 
-        Session::flash('message', "{$module['entity']} excluído com sucesso.");
+        // 1. Verificação prévia de integridade referencial (bloqueia se houver restrict)
+        $restrictErrors = [];
+        $this->checkDeletionRestrictions($slug, $id, $restrictErrors);
+
+        if (!empty($restrictErrors)) {
+            $errorMsg = "Não é possível excluir este registro pois possui vínculos protegidos (restrict): " . implode('; ', $restrictErrors) . ".";
+            Session::flash('error', $errorMsg);
+            Response::redirect("/app/{$slug}");
+            return;
+        }
+
+        // 2. Executar políticas relacionais ativas (set_null e cascade)
+        $unlinkedCount = 0;
+        $cascadeCount = 0;
+        $this->executeRelationPolicies($slug, $id, $unlinkedCount, $cascadeCount);
+
+        // 3. Excluir o registro principal
+        $repo->delete($id);
+        (new AuditService($this->app->storage))->log(
+            $slug . '_deleted',
+            $this->user()['id'] ?? null,
+            "ID: {$id}"
+        );
+
+        // 4. Feedback detalhado para o usuário
+        $details = [];
+        if ($cascadeCount > 0) {
+            $details[] = "{$cascadeCount} registro(s) dependente(s) excluído(s) em cascata";
+        }
+        if ($unlinkedCount > 0) {
+            $details[] = "{$unlinkedCount} registro(s) desvinculado(s)";
+        }
+
+        $successMsg = "{$module['entity']} excluído com sucesso.";
+        if (!empty($details)) {
+            $successMsg .= " (" . implode(', ', $details) . ")";
+        }
+
+        Session::flash('message', $successMsg);
         Response::redirect("/app/{$slug}");
     }
 }

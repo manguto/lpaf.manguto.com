@@ -129,28 +129,50 @@ $hasActiveFilters = !empty($query) || !empty(array_filter($activeFilters ?? []))
                             <?php endif; ?>
                             <?php if (can($app, ($module['permission_prefix'] ?? $module['slug']) . '.delete')): ?>
                                 <?php
-                                $refCounts = $reverseCounts[$item['id']] ?? [];
-                                $hasRefs = !empty($refCounts);
-                                $refSummaries = [];
-                                foreach ($refCounts as $mName => $c) {
-                                    $refSummaries[] = "{$c} em {$mName}";
-                                }
-                                $refText = implode(', ', $refSummaries);
-                                $alertMsg = "Não é possível excluir este(a) {$module['entity']} pois possui vínculos ativos ({$refText}).\n\nPara excluir, primeiro remova ou altere os registros vinculados.";
+                                $refInfo = $reverseCounts[$item['id']] ?? [
+                                    'has_restrict' => false,
+                                    'has_cascade' => false,
+                                    'has_set_null' => false,
+                                    'restrict_text' => '',
+                                    'cascade_text' => '',
+                                    'set_null_text' => '',
+                                ];
                                 ?>
-                                <?php if ($hasRefs): ?>
+                                <?php if ($refInfo['has_restrict']): ?>
+                                    <?php
+                                    $alertMsg = "Não é possível excluir este(a) {$module['entity']} pois possui vínculos protegidos (restrict): {$refInfo['restrict_text']}.\n\nPara excluir, primeiro remova ou desvincule esses registros.";
+                                    ?>
                                     <button type="button" 
                                             class="btn btn-secondary btn-sm" 
                                             style="color: #64748b; border-color: #cbd5e1; cursor: not-allowed;" 
                                             data-alert="<?= e($alertMsg) ?>"
                                             onclick="alert(this.getAttribute('data-alert'));" 
-                                            title="Protegido por integridade referencial: <?= e($refText) ?>">
+                                            title="Protegido por integridade referencial: <?= e($refInfo['restrict_text']) ?>">
                                         🔒 Excluir
                                     </button>
                                 <?php else: ?>
-                                    <form method="post" action="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/delete') ?>" style="display:inline; background:transparent; border:0; padding:0; box-shadow:none;" onsubmit="return confirm('Deseja realmente excluir este registro de <?= e($module['entity']) ?>?');">
+                                    <?php
+                                    if ($refInfo['has_cascade'] && $refInfo['has_set_null']) {
+                                        $confirmMsg = "ATENÇÃO: Ao excluir este(a) {$module['entity']}:\n- {$refInfo['cascade_text']} serão EXCLUÍDOS permanentemente (cascade).\n- {$refInfo['set_null_text']} serão desvinculados (set null).\n\nDeseja realmente continuar?";
+                                    } elseif ($refInfo['has_cascade']) {
+                                        $confirmMsg = "ATENÇÃO: Este registro de {$module['entity']} possui dependentes que serão EXCLUÍDOS permanentemente em cascata ({$refInfo['cascade_text']}).\n\nDeseja realmente continuar?";
+                                    } elseif ($refInfo['has_set_null']) {
+                                        $confirmMsg = "Aviso: Este registro de {$module['entity']} possui vínculos que serão desvinculados ({$refInfo['set_null_text']}).\n\nDeseja continuar com a exclusão?";
+                                    } else {
+                                        $confirmMsg = "Deseja realmente excluir este registro de {$module['entity']}?";
+                                    }
+                                    ?>
+                                    <form method="post" 
+                                          action="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/delete') ?>" 
+                                          style="display:inline; background:transparent; border:0; padding:0; box-shadow:none;" 
+                                          data-confirm="<?= e($confirmMsg) ?>"
+                                          onsubmit="return confirm(this.getAttribute('data-confirm'));">
                                         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                                        <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                                        <button type="submit" 
+                                                class="btn btn-danger btn-sm" 
+                                                title="<?= $refInfo['has_cascade'] ? 'Exclusão com remoção de dependentes em cascata' : 'Excluir registro' ?>">
+                                            <?= $refInfo['has_cascade'] ? '💥 Excluir' : 'Excluir' ?>
+                                        </button>
                                     </form>
                                 <?php endif; ?>
                             <?php endif; ?>

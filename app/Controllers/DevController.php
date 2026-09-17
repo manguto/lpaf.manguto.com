@@ -202,6 +202,14 @@ final class DevController extends Controller
                     } elseif (isset($currentConfig['fields'][$fName]['display'])) {
                         $fieldConfig['display'] = $currentConfig['fields'][$fName]['display'];
                     }
+                    $onDelete = trim((string) ($fieldData['relation_on_delete'] ?? ''));
+                    if (in_array($onDelete, ['restrict', 'set_null', 'cascade'], true)) {
+                        $fieldConfig['on_delete'] = $onDelete;
+                    } elseif (isset($currentConfig['fields'][$fName]['on_delete'])) {
+                        $fieldConfig['on_delete'] = $currentConfig['fields'][$fName]['on_delete'];
+                    } else {
+                        $fieldConfig['on_delete'] = 'restrict';
+                    }
                 }
 
                 if ($fType === 'boolean') {
@@ -332,6 +340,8 @@ final class DevController extends Controller
                 if ($displayField !== '') {
                     $fieldConfig['display'] = $displayField;
                 }
+                $onDelete = trim((string) ($fieldData['relation_on_delete'] ?? ''));
+                $fieldConfig['on_delete'] = in_array($onDelete, ['restrict', 'set_null', 'cascade'], true) ? $onDelete : 'restrict';
             }
 
             if ($fType === 'boolean') {

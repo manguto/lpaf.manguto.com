@@ -13,32 +13,63 @@
         <?php endif; ?>
         <?php if (can($app, ($module['permission_prefix'] ?? $module['slug']) . '.delete')): ?>
             <?php
-            $childRefs = [];
+            $restrictRefs = [];
+            $cascadeRefs = [];
+            $setNullRefs = [];
             foreach ($childRelations as $cr) {
                 $cCount = count($cr['items'] ?? []);
                 if ($cCount > 0) {
-                    $childRefs[] = "{$cCount} no módulo '{$cr['module']['name']}'";
+                    $policy = $cr['on_delete'] ?? 'restrict';
+                    $mName = $cr['module']['name'] ?? 'Módulo';
+                    if ($policy === 'restrict') {
+                        $restrictRefs[] = "{$cCount} em {$mName}";
+                    } elseif ($policy === 'cascade') {
+                        $cascadeRefs[] = "{$cCount} em {$mName}";
+                    } elseif ($policy === 'set_null') {
+                        $setNullRefs[] = "{$cCount} em {$mName}";
+                    }
                 }
             }
-            $hasChildRefs = !empty($childRefs);
-            $childRefsText = implode(', ', $childRefs);
+            $hasRestrict = !empty($restrictRefs);
+            $hasCascade = !empty($cascadeRefs);
+            $hasSetNull = !empty($setNullRefs);
             ?>
-            <?php if ($hasChildRefs): ?>
+            <?php if ($hasRestrict): ?>
                 <?php
-                $showMsg = "Não é possível excluir este registro pois ele possui vínculos ativos ({$childRefsText}).\n\nRemova ou desvincule os registros listados abaixo antes de excluí-lo.";
+                $restrictText = implode(', ', $restrictRefs);
+                $showMsg = "Não é possível excluir este(a) {$module['entity']} pois possui vínculos protegidos (restrict): {$restrictText}.\n\nRemova ou desvincule esses registros antes de excluí-lo.";
                 ?>
                 <button type="button" 
                         class="btn btn-secondary btn-sm" 
                         style="color: #64748b; border-color: #cbd5e1; cursor: not-allowed;" 
                         data-alert="<?= e($showMsg) ?>"
                         onclick="alert(this.getAttribute('data-alert'));" 
-                        title="Protegido por integridade referencial: <?= e($childRefsText) ?>">
+                        title="Protegido por integridade referencial: <?= e($restrictText) ?>">
                     🔒 Excluir
                 </button>
             <?php else: ?>
-                <form method="post" action="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/delete') ?>" style="display:inline; background:transparent; border:0; padding:0; box-shadow:none; margin:0;" onsubmit="return confirm('Deseja realmente excluir este registro de <?= e($module['entity']) ?>?');">
+                <?php
+                if ($hasCascade && $hasSetNull) {
+                    $confirmMsg = "ATENÇÃO: Ao excluir este registro de {$module['entity']}:\n- " . implode(', ', $cascadeRefs) . " serão EXCLUÍDOS permanentemente (em cascata).\n- " . implode(', ', $setNullRefs) . " serão desvinculados (set null).\n\nDeseja realmente continuar?";
+                } elseif ($hasCascade) {
+                    $confirmMsg = "ATENÇÃO: Este registro de {$module['entity']} possui dependentes que serão EXCLUÍDOS permanentemente em cascata (" . implode(', ', $cascadeRefs) . ").\n\nDeseja realmente continuar?";
+                } elseif ($hasSetNull) {
+                    $confirmMsg = "Aviso: Este registro de {$module['entity']} possui vínculos que serão desvinculados (" . implode(', ', $setNullRefs) . ").\n\nDeseja continuar com a exclusão?";
+                } else {
+                    $confirmMsg = "Deseja realmente excluir este registro de {$module['entity']}?";
+                }
+                ?>
+                <form method="post" 
+                      action="<?= url($app, '/app/' . $module['slug'] . '/' . $item['id'] . '/delete') ?>" 
+                      style="display:inline; background:transparent; border:0; padding:0; box-shadow:none; margin:0;"
+                      data-confirm="<?= e($confirmMsg) ?>"
+                      onsubmit="return confirm(this.getAttribute('data-confirm'));">
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                    <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                    <button type="submit" 
+                            class="btn btn-danger btn-sm"
+                            title="<?= $hasCascade ? 'Exclusão com remoção de dependentes em cascata' : 'Excluir registro' ?>">
+                        <?= $hasCascade ? '💥 Excluir' : 'Excluir' ?>
+                    </button>
                 </form>
             <?php endif; ?>
         <?php endif; ?>
@@ -119,12 +150,21 @@
             ?>
             <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                         <span style="font-size: 1.25rem;"><?= e($cMod['icon'] ?? '📁') ?></span>
                         <h3 style="font-size: 1.1rem; margin: 0; font-weight: 700; color: var(--text-main);">
                             <?= e($cMod['name']) ?>
                         </h3>
                         <span class="badge badge-gray" style="font-size: 0.75rem;"><?= count($cItems) ?></span>
+                        <?php
+                        $cPolicy = $child['on_delete'] ?? 'restrict';
+                        if ($cPolicy === 'cascade'): ?>
+                            <span class="badge badge-danger" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" title="Ao excluir este registro pai, todos os registros dependentes vinculados serão excluídos em cascata">💥 Cascade</span>
+                        <?php elseif ($cPolicy === 'set_null'): ?>
+                            <span class="badge badge-gray" style="font-size: 0.7rem; padding: 0.15rem 0.4rem; color: #475569;" title="Ao excluir este registro pai, estes registros serão desvinculados">⚪ Set Null</span>
+                        <?php else: ?>
+                            <span class="badge badge-gray" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" title="Ao excluir este registro pai, a exclusão será bloqueada enquanto houver registros vinculados">🔒 Restrict</span>
+                        <?php endif; ?>
                     </div>
                     <?php if (can($app, ($cMod['permission_prefix'] ?? $cMod['slug']) . '.create')): ?>
                         <a class="btn btn-primary btn-sm" href="<?= url($app, $child['create_url']) ?>">

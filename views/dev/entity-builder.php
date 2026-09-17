@@ -287,7 +287,7 @@ main {
                                         <input type="text" name="fields[<?= $idx ?>][options]" value="<?= e($optionsVal) ?>" placeholder="Opção 1, Opção 2" <?= $isSelect ? 'required' : '' ?>>
                                     </div>
                                     <div class="col-options-relation" style="display: <?= $isRelation ? 'block' : 'none' ?>;">
-                                        <select name="fields[<?= $idx ?>][relation_target]" <?= $isRelation ? 'required' : '' ?>>
+                                        <select name="fields[<?= $idx ?>][relation_target]" <?= $isRelation ? 'required' : '' ?> style="margin-bottom: 0.35rem;">
                                             <option value="">Vincular a...</option>
                                             <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
                                                 <?php if ($modSlug !== ($module['slug'] ?? '')): ?>
@@ -296,6 +296,11 @@ main {
                                                     </option>
                                                 <?php endif; ?>
                                             <?php endforeach; ?>
+                                        </select>
+                                        <select name="fields[<?= $idx ?>][relation_on_delete]" title="Ação ao Excluir o Registro Pai" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;">
+                                            <option value="restrict" <?= ($f['on_delete'] ?? 'restrict') === 'restrict' ? 'selected' : '' ?>>🔒 Bloquear (Restrict)</option>
+                                            <option value="set_null" <?= ($f['on_delete'] ?? '') === 'set_null' ? 'selected' : '' ?>>⚪ Desvincular (Set Null)</option>
+                                            <option value="cascade" <?= ($f['on_delete'] ?? '') === 'cascade' ? 'selected' : '' ?>>💥 Em Cascata (Cascade)</option>
                                         </select>
                                     </div>
                                     <span class="cell-muted-dash" style="display: <?= (!$isSelect && !$isRelation) ? 'block' : 'none' ?>;">—</span>
@@ -348,13 +353,18 @@ main {
                                     <input type="text" name="fields[0][options]" placeholder="Opção 1, Opção 2">
                                 </div>
                                 <div class="col-options-relation" style="display: none;">
-                                    <select name="fields[0][relation_target]">
+                                    <select name="fields[0][relation_target]" style="margin-bottom: 0.35rem;">
                                         <option value="">Vincular a...</option>
                                         <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
                                             <option value="<?= e($modSlug) ?>">
                                                 <?= e($mod['name']) ?> (<?= e($mod['entity']) ?>)
                                             </option>
                                         <?php endforeach; ?>
+                                    </select>
+                                    <select name="fields[0][relation_on_delete]" title="Ação ao Excluir o Registro Pai" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;">
+                                        <option value="restrict" selected>🔒 Bloquear (Restrict)</option>
+                                        <option value="set_null">⚪ Desvincular (Set Null)</option>
+                                        <option value="cascade">💥 Em Cascata (Cascade)</option>
                                     </select>
                                 </div>
                                 <span class="cell-muted-dash">—</span>
@@ -603,8 +613,13 @@ function addFieldRow() {
                 <input type="text" name="fields[${idx}][options]" placeholder="Opção 1, Opção 2">
             </div>
             <div class="col-options-relation" style="display: none;">
-                <select name="fields[${idx}][relation_target]">
+                <select name="fields[${idx}][relation_target]" style="margin-bottom: 0.35rem;">
                     ${relationOptionsHtml}
+                </select>
+                <select name="fields[${idx}][relation_on_delete]" title="Ação ao Excluir o Registro Pai" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;">
+                    <option value="restrict" selected>🔒 Bloquear (Restrict)</option>
+                    <option value="set_null">⚪ Desvincular (Set Null)</option>
+                    <option value="cascade">💥 Em Cascata (Cascade)</option>
                 </select>
             </div>
             <span class="cell-muted-dash">—</span>

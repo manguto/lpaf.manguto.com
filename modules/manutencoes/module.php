@@ -17,6 +17,7 @@ return [
             'type' => 'relation',
             'target' => 'equipamentos',
             'display' => 'nome',
+            'on_delete' => 'restrict',
             'required' => true,
             'unique' => false,
             'list' => true,

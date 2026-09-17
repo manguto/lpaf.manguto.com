@@ -24,6 +24,7 @@ return [
             'type' => 'relation',
             'target' => 'clientes',
             'display' => 'nome_fantasia',
+            'on_delete' => 'restrict',
             'required' => false,
             'unique' => false,
             'list' => true,

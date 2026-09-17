@@ -1008,6 +1008,11 @@ Status do roadmap:
 12. [x] CRUD declarativo por metadados (persistência CSV dinâmica, renderização automática e integridade de dados)
 13. [x] Sistema de Design & Alto Contraste Global (identificação visual nítida de formulários, inputs com bordas e sombras definidas, rótulos destacados, checkboxes ampliados e tabelas contrastadas)
 14. [x] Relacionamentos entre Entidades (Chaves Estrangeiras 1:N no Entity Builder e CRUD, seleção dinâmica, integridade referencial com validação de existência e proteção ativa contra registros órfãos)
+15. [x] Sub-listagem Reversa / Visão 360° (exibição automática de registros dependentes na tela de visualização do registro pai com badges de política e criação contextual com pré-preenchimento)
+16. [x] Filtros Rápidos por Relação na Listagem (atalho de filtro contextual direto na coluna de relação da tabela com badge ativa e remoção rápida de filtro)
+17. [x] Políticas Granulares de Exclusão - `on_delete` (suporte a `restrict`, `set_null` e `cascade` declarativos no Entity Builder e no motor CRUD; prevenção contra exclusões parciais com verificação recursiva; auditoria de registros desvinculados ou removidos em cascata; e botões contextuais `🔒 Excluir` para restrição e `💥 Excluir` para cascata com confirmações detalhadas)
+18. [ ] Relacionamentos N:N com Tabelas Pivot Declarativas (próximo aprimoramento previsto)
+19. [ ] Busca Assistida / Autocomplete em Relações (otimização para catálogos com centenas ou milhares de registros)
 
 ## 41. Contribuições
 
@@ -1041,4 +1046,4 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
    ```bash
    php tests/verify.php
    ```
-   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial).
+   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`).

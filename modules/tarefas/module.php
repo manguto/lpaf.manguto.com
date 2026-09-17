@@ -25,6 +25,7 @@ return [
             'type' => 'relation',
             'target' => 'projetos',
             'display' => 'nome',
+            'on_delete' => 'cascade',
             'required' => true,
             'unique' => false,
             'list' => true,
