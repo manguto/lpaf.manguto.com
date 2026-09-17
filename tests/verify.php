@@ -339,6 +339,25 @@ if ($reverseData[0]['items'][0]['numero'] !== 'CTR-2026-001') {
     throw new RuntimeException('Dados do registro filho na sub-listagem reversa incorretos.');
 }
 
+// Testa cálculo de reverseReferenceCounts (UX proativa de exclusão)
+$refCountMethod = new ReflectionMethod($crudCtrl, 'resolveReverseReferenceCounts');
+$refCountMethod->setAccessible(true);
+$refCounts = $refCountMethod->invoke($crudCtrl, $clientesConfig, [$cli1]);
+if (($refCounts['cli_001']['Contratos Teste'] ?? 0) !== 1) {
+    throw new RuntimeException('Cálculo de contagem de vínculos reversos incorreto.');
+}
+
+// Testa filtro por relação na listagem do filho (Demanda 2)
+$cntRows = $cntRepo->all();
+$filteredByCli1 = array_values(array_filter($cntRows, fn($r) => ($r['cliente_id'] ?? '') === 'cli_001'));
+$filteredByCli999 = array_values(array_filter($cntRows, fn($r) => ($r['cliente_id'] ?? '') === 'cli_999'));
+if (count($filteredByCli1) !== 1 || $filteredByCli1[0]['id'] !== 'cnt_001') {
+    throw new RuntimeException('Falha no filtro por entidade relacionada.');
+}
+if (count($filteredByCli999) !== 0) {
+    throw new RuntimeException('Filtro por relação inexistente deveria retornar lista vazia.');
+}
+
 // Testa integridade referencial: simula verificação de exclusão do pai
 $allMods = $app->modules->all();
 $hasReference = false;

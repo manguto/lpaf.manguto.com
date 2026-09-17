@@ -12,15 +12,35 @@
     <?php endif; ?>
 </div>
 
-<!-- Barra de Busca -->
+<?php
+$hasActiveFilters = !empty($query) || !empty(array_filter($activeFilters ?? []));
+?>
+
+<!-- Barra de Busca e Filtros -->
 <div class="card" style="margin-bottom: 1.5rem; padding: 1rem;">
     <form method="get" action="<?= url($app, '/app/' . $module['slug']) ?>" style="display: flex; gap: 0.75rem; align-items: center; padding: 0; border: 0; box-shadow: none; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 220px;">
+        <div style="flex: 2; min-width: 200px;">
             <input type="text" name="q" value="<?= e($query ?? '') ?>" placeholder="Pesquisar por qualquer campo..." style="margin-top: 0;">
         </div>
-        <button type="submit" class="btn btn-primary btn-sm">Buscar</button>
-        <?php if (!empty($query)): ?>
-            <a href="<?= url($app, '/app/' . $module['slug']) ?>" class="btn btn-secondary btn-sm">Limpar Busca</a>
+
+        <?php if (!empty($relationMaps)): ?>
+            <?php foreach ($relationMaps as $relKey => $relInfo): ?>
+                <div style="flex: 1; min-width: 180px;">
+                    <select name="<?= e($relKey) ?>" onchange="this.form.submit()" style="margin-top: 0;">
+                        <option value="">Todos(as) <?= e($relInfo['target_entity']) ?>...</option>
+                        <?php foreach ($relInfo['items'] as $opt): ?>
+                            <option value="<?= e($opt['id']) ?>" <?= (($activeFilters[$relKey] ?? '') === $opt['id']) ? 'selected' : '' ?>>
+                                <?= e($opt['label']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+
+        <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+        <?php if ($hasActiveFilters): ?>
+            <a href="<?= url($app, '/app/' . $module['slug']) ?>" class="btn btn-secondary btn-sm">Limpar Filtros</a>
         <?php endif; ?>
     </form>
 </div>
@@ -28,8 +48,8 @@
 <!-- Listagem -->
 <?php if (empty($items)): ?>
     <div class="card">
-        <p class="muted">
-            <?= !empty($query) ? 'Nenhum registro encontrado para a busca realizada.' : "Nenhum registro de {$module['entity']} cadastrado até o momento." ?>
+        <p class="muted" style="margin-bottom: 0;">
+            <?= $hasActiveFilters ? 'Nenhum registro encontrado para os filtros aplicados.' : "Nenhum registro de {$module['entity']} cadastrado até o momento." ?>
         </p>
     </div>
 <?php else: ?>
@@ -74,12 +94,20 @@
                                     <?php
                                     $relData = $relationMaps[$key]['map'][$val] ?? null;
                                     $targetSlug = $relationMaps[$key]['target'] ?? '';
+                                    $isFiltered = ($activeFilters[$key] ?? '') === $val;
                                     ?>
                                     <?php if ($val !== '' && $relData !== null): ?>
-                                        <a href="<?= url($app, '/app/' . $targetSlug . '/' . $val) ?>" style="font-weight: 600; text-decoration: none; color: var(--primary);">
-                                            <?= e($relData) ?>
-                                        </a>
-                                        <small class="muted">(<?= e($val) ?>)</small>
+                                        <div style="display: flex; align-items: center; gap: 0.35rem;">
+                                            <a href="<?= url($app, '/app/' . $targetSlug . '/' . $val) ?>" style="font-weight: 600; text-decoration: none; color: var(--primary);">
+                                                <?= e($relData) ?>
+                                            </a>
+                                            <a href="<?= url($app, '/app/' . $module['slug'] . '?' . $key . '=' . urlencode($val)) ?>" 
+                                               class="badge <?= $isFiltered ? 'badge-primary' : 'badge-gray' ?>" 
+                                               style="font-size: 0.7rem; padding: 0.15rem 0.35rem; text-decoration: none;" 
+                                               title="Filtrar listagem por este(a) <?= e($relationMaps[$key]['target_entity'] ?? 'registro') ?>">
+                                                🔍
+                                            </a>
+                                        </div>
                                     <?php elseif ($val !== ''): ?>
                                         <code><?= e($val) ?></code>
                                     <?php else: ?>

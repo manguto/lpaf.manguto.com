@@ -132,6 +132,17 @@ final class GenericCrudController extends Controller
         $items = $repo ? $repo->all() : [];
         $relations = $this->resolveRelations($module);
 
+        $activeFilters = [];
+        foreach (($module['fields'] ?? []) as $fKey => $fConfig) {
+            if (($fConfig['type'] ?? '') === 'relation') {
+                $filterVal = trim((string) $request->input($fKey, ''));
+                if ($filterVal !== '') {
+                    $activeFilters[$fKey] = $filterVal;
+                    $items = array_values(array_filter($items, fn($item) => ($item[$fKey] ?? '') === $filterVal));
+                }
+            }
+        }
+
         $query = trim((string) $request->input('q', ''));
         if ($query !== '') {
             $queryLower = mb_strtolower($query);
@@ -154,6 +165,7 @@ final class GenericCrudController extends Controller
             'query' => $query,
             'relationMaps' => $relations,
             'reverseCounts' => $reverseCounts,
+            'activeFilters' => $activeFilters,
         ]);
     }
 
