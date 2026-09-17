@@ -3,7 +3,7 @@
 <table>
     <tr>
         <th>Nome</th>
-        <th>Usuário</th>
+        <th>Login</th>
         <th>Status</th>
         <th>Ação</th>
     </tr><?php foreach ($users as $item): ?><tr>

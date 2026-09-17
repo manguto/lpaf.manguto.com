@@ -24,8 +24,17 @@ final class AdminController extends Controller
     }
     public function storeUser(Request $request): void
     {
+        $username = trim((string) $request->input('username'));
+        if (str_contains($username, '@') || !preg_match('/^[a-zA-Z0-9._-]{3,30}$/', $username)) {
+            \App\Core\Session::flash('error', 'O login não pode ser um e-mail. Utilize entre 3 e 30 caracteres (letras, números, ponto, traço ou sublinhado).');
+            Response::redirect('/admin/users/create');
+        }
+        if ($this->app->users->findByUsername($username)) {
+            \App\Core\Session::flash('error', 'Este login já está cadastrado.');
+            Response::redirect('/admin/users/create');
+        }
         $now = date('c');
-        $user = $this->app->users->insert(['id' => $this->app->users->nextId(), 'name' => trim((string) $request->input('name')), 'username' => trim((string) $request->input('username')), 'password_hash' => password_hash((string) $request->input('password'), PASSWORD_DEFAULT), 'active' => '1', 'created_at' => $now, 'updated_at' => $now]);
+        $user = $this->app->users->insert(['id' => $this->app->users->nextId(), 'name' => trim((string) $request->input('name')), 'username' => $username, 'password_hash' => password_hash((string) $request->input('password'), PASSWORD_DEFAULT), 'active' => '1', 'created_at' => $now, 'updated_at' => $now]);
         $relations = new \App\Repositories\RelationRepository($this->app->storage, 'user_roles.csv', ['user_id', 'role_id']);
         foreach ($this->allowedRoles((array) $request->input('roles', [])) as $role) $relations->add(['user_id' => $user['id'], 'role_id' => $role]);
         (new AuditService($this->app->storage))->log('user_created', $this->user()['id'], $user['id']);

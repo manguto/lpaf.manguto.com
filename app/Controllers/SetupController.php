@@ -28,6 +28,10 @@ final class SetupController extends Controller
         $name = trim((string) $request->input('name'));
         $username = trim((string) $request->input('username'));
         $password = (string) $request->input('password');
+        if (str_contains($username, '@') || !preg_match('/^[a-zA-Z0-9._-]{3,30}$/', $username)) {
+            View::render('auth/setup', ['error' => 'O login não pode ser um e-mail. Utilize entre 3 e 30 caracteres (letras, números, ponto, traço ou sublinhado).', 'app' => $this->app, 'csrf' => $_SESSION['_csrf']]);
+            return;
+        }
         if ($name === '' || $username === '' || strlen($password) < 8 || $password !== (string) $request->input('password_confirmation')) {
             View::render('auth/setup', ['error' => 'Preencha os campos e use uma senha com pelo menos 8 caracteres.', 'app' => $this->app, 'csrf' => $_SESSION['_csrf']]);
             return;
