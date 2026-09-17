@@ -8,6 +8,7 @@ use App\Core\Application;
 use App\Core\Config;
 use App\Core\CsvStorage;
 use App\Core\Request;
+use App\Services\BackupService;
 use App\Services\SetupService;
 
 $root = sys_get_temp_dir() . '/lpaf_test_' . bin2hex(random_bytes(4));
@@ -23,4 +24,31 @@ $relations = $app->storage->read('user_roles.csv');
 if (($relations[0]['role_id'] ?? '') !== 'role_dev') throw new RuntimeException('RBAC inicial inválido.');
 $app->storage->write('check.csv', ['id', 'value'], [['id' => '1', 'value' => 'ok']]);
 if ($app->storage->read('check.csv')[0]['value'] !== 'ok') throw new RuntimeException('CSV não persistiu.');
-echo "Verificação OK: setup, CSV, hash de senha e RBAC.\n";
+
+// Teste do BackupService
+$backupService = new BackupService($app);
+$backupId = $backupService->create('teste_unitario', 'usr_001');
+$backups = $backupService->all();
+if (empty($backups) || $backups[0]['id'] !== $backupId) throw new RuntimeException('Backup não encontrado na listagem.');
+
+// Altera dado para verificar restauração
+$app->storage->write('check.csv', ['id', 'value'], [['id' => '1', 'value' => 'alterado']]);
+if ($app->storage->read('check.csv')[0]['value'] !== 'alterado') throw new RuntimeException('Falha na alteração pré-restauração.');
+
+// Restaura o backup
+$restored = $backupService->restore($backupId, 'usr_001');
+if (!$restored) throw new RuntimeException('Restauração falhou.');
+if ($app->storage->read('check.csv')[0]['value'] !== 'ok') throw new RuntimeException('Dado não foi restaurado para o estado original.');
+
+// Verifica se a salvaguarda pré-restauração foi gerada
+$backupsAfter = $backupService->all();
+$hasPreRestore = false;
+foreach ($backupsAfter as $b) {
+    if (str_contains($b['id'], 'pre_restore')) {
+        $hasPreRestore = true;
+        break;
+    }
+}
+if (!$hasPreRestore) throw new RuntimeException('Salvaguarda pré-restauração não foi gerada.');
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC e Backups (criação e restauração com salvaguarda).\n";

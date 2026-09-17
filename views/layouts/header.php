@@ -13,4 +13,4 @@
     <header><strong><a href="<?= url($app) ?>"> <?= e($app->setting('app_name', $app->config->get('app_name'))) ?></a></strong>
         <nav><?php if ($user): ?><a href="<?= url($app, '/app') ?>">Aplicação</a><?php if (can($app, 'users.view')): ?><a href="<?= url($app, '/admin') ?>">Administração</a><?php endif; ?><?php if (can($app, 'dev.access')): ?><a href="<?= url($app, '/dev') ?>">Dev-End</a><?php endif; ?><form method="post" action="<?= url($app, '/logout') ?>" style="display:inline;background:transparent;border:0;padding:0"><input type="hidden" name="_csrf" value="<?= e($csrf) ?>"><button type="submit">Sair</button></form><?php else: ?><a href="<?= url($app, '/login') ?>">Entrar</a><?php endif; ?></nav>
     </header>
-    <main><?php if ($message = App\Core\Session::flash('message')): ?><p class="success"><?= e($message) ?></p><?php endif; ?>
+    <main><?php if ($message = App\Core\Session::flash('message')): ?><p class="success"><?= e($message) ?></p><?php endif; ?><?php if ($errorMsg = App\Core\Session::flash('error')): ?><p class="error"><?= e($errorMsg) ?></p><?php endif; ?>
