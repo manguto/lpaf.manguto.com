@@ -5,10 +5,14 @@ declare(strict_types=1);
 use App\Core\Application;
 use App\Core\Config;
 use App\Core\CsvStorage;
+use App\Core\Preflight;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Router;
 use App\Core\Session;
+
+require dirname(__DIR__) . '/app/Core/Preflight.php';
+Preflight::check(dirname(__DIR__));
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require dirname(__DIR__) . '/app/Helpers/functions.php';

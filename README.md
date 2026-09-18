@@ -50,6 +50,7 @@ O projeto deverá seguir os seguintes princípios:
 8. Dados administrativos legíveis diretamente.
 9. Possibilidade de evolução sem reescrita integral.
 10. Não superdimensionar a arquitetura para necessidades inexistentes.
+11. Documentação viva e sincronizada: todo e qualquer ajuste técnico, refatoração ou acréscimo que comprometa a corretude ou completude deste README deve ser obrigatoriamente atualizado no mesmo.
 
 ## 4. Tecnologias
 
@@ -126,7 +127,7 @@ Regras de negócio relevantes deverão utilizar Service.
 │   ├── Middleware/
 │   ├── Services/
 │   ├── Repositories/
-│   ├── Core/
+│   ├── Core/ (Application, Config, Preflight, CsvStorage, Router, etc.)
 │   └── Helpers/
 │
 ├── config/
@@ -180,6 +181,8 @@ public/index.php
 ```
 
 O diretório público do servidor web deverá apontar para `public/`.
+
+Como primeira instrução de inicialização, o `public/index.php` aciona a camada de **Preflight** (`App\Core\Preflight::check()`), verificando a existência das dependências e a sanidade do ambiente antes de invocar o autoloader ou qualquer outro componente da aplicação.
 
 Arquivos internos da aplicação e arquivos CSV nunca deverão ser disponibilizados diretamente pela web.
 
@@ -778,6 +781,20 @@ Desenvolvedor
 
 Após instalação concluída, `/setup` deverá ficar bloqueado.
 
+### 30.1. Verificação prévia de requisitos (Preflight Checks)
+
+Antes que o assistente `/setup` ou qualquer outra rota seja executada, a aplicação passa por uma camada de verificação prévia (`App\Core\Preflight`) no ponto de entrada `public/index.php` (e na suíte de testes `tests/verify.php`):
+
+1. **Detecção Proativa de Dependências**: Identifica se o projeto acabou de ser clonado do repositório Git e a pasta `vendor/` ainda não foi criada (já que `vendor/` não é versionado).
+2. **Prevenção contra Erros Fatais**: Intercepta a ausência de `vendor/autoload.php` antes que o PHP lance avisos (*Warning*) e erros fatais (*Fatal error*).
+3. **Interface Visual Amigável (Web)**: Retorna status HTTP 503 com tela de diagnóstico estruturada contendo:
+   - Explicação transparente do motivo da ausência;
+   - Passo a passo para terminal (`cd <diretório>` e `composer install`) com botão para copiar comandos;
+   - Detecção automática de binário do Composer no servidor e botão para auto-instalação direta pelo navegador;
+   - Opção de geração de autoloader nativo de emergência (para ambientes locais sem Composer instalado);
+   - Tabela de verificação de ambiente (PHP >= 8.2, extensões `session`, `json`, `mbstring`, `filter`, escrita em `storage/` e status do `.env`).
+4. **Relatório Estruturado no Terminal (CLI)**: Caso executado por linha de comando (`php public/index.php`), exibe orientações formatadas no console e finaliza com código 1 sem poluição de stack traces.
+
 ## 31. Proteção do setup
 
 Deverá existir suporte a:
@@ -1011,12 +1028,15 @@ Status do roadmap:
 15. [x] Sub-listagem Reversa / Visão 360° (exibição automática de registros dependentes na tela de visualização do registro pai com badges de política e criação contextual com pré-preenchimento)
 16. [x] Filtros Rápidos por Relação na Listagem (atalho de filtro contextual direto na coluna de relação da tabela com badge ativa e remoção rápida de filtro)
 17. [x] Políticas Granulares de Exclusão - `on_delete` (suporte a `restrict`, `set_null` e `cascade` declarativos no Entity Builder e no motor CRUD; prevenção contra exclusões parciais com verificação recursiva; auditoria de registros desvinculados ou removidos em cascata; e botões contextuais `🔒 Excluir` para restrição e `💥 Excluir` para cascata com confirmações detalhadas)
-18. [ ] Relacionamentos N:N com Tabelas Pivot Declarativas (próximo aprimoramento previsto)
-19. [ ] Busca Assistida / Autocomplete em Relações (otimização para catálogos com centenas ou milhares de registros)
+18. [x] Verificação Prévia de Ambiente e Diagnóstico de Requisitos (Preflight Checks: detecção de dependências ausentes, validação de PHP 8.2+, extensões e permissões com interface web amigável, auto-instalação e saída formatada no CLI)
+19. [ ] Relacionamentos N:N com Tabelas Pivot Declarativas (próximo aprimoramento previsto)
+20. [ ] Busca Assistida / Autocomplete em Relações (otimização para catálogos com centenas ou milhares de registros)
 
-## 41. Contribuições
+## 41. Contribuições e Manutenção da Documentação
 
 O projeto pretende ser mantido como repositório público.
+
+> **Regra Obrigatória de Manutenção do README**: Todo e qualquer ajuste técnico, refatoração, acréscimo de componente ou modificação no fluxo operacional que comprometa a corretude ou a completude deste documento deve ser obrigatoriamente refletido e atualizado neste `README.md`. Este documento é a fonte primária e fidedigna da especificação e do estado da aplicação.
 
 Contribuições deverão preservar os princípios de:
 
@@ -1024,7 +1044,8 @@ Contribuições deverão preservar os princípios de:
 * legibilidade;
 * segurança;
 * baixa dependência;
-* arquitetura proporcional ao porte da aplicação.
+* arquitetura proporcional ao porte da aplicação;
+* integridade e completude documental contínua.
 
 Mudanças arquiteturais significativas deverão ser justificadas.
 
@@ -1039,11 +1060,11 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
 ### Instalação e execução local
 
 1. Copie `.env.example` para `.env` e configure `APP_URL`, `APP_DEBUG` e, opcionalmente, `APP_SETUP_KEY`.
-2. Execute `composer install` na raiz do projeto para gerar o autoloader PSR-4.
-3. Inicie o servidor embutido do PHP (`php -S localhost:8000 -t public public/index.php`) ou configure o virtualhost do Apache para o diretório `public/`.
-4. Acesse `/setup`, crie o primeiro usuário (com perfil automático Desenvolvedor) e entre no sistema.
+2. Execute `composer install` na raiz do projeto para gerar o autoloader PSR-4. *(Nota: caso acesse a aplicação antes deste passo, o sistema de **Preflight** interceptará a execução e oferecerá diagnósticos e botões para auto-instalação ou autoloader de emergência diretamente no navegador ou instruções no terminal).*
+3. Inicie o servidor embutido do PHP (`php -S localhost:8000 -t public public/index.php`) ou configure o virtualhost do Apache/XAMPP para o diretório `public/`.
+4. Acesse a raiz da aplicação (ou `/setup`), crie o primeiro usuário (com perfil automático Desenvolvedor) e entre no sistema.
 5. Para rodar a suíte completa de verificação automatizada:
    ```bash
    php tests/verify.php
    ```
-   O teste roda de forma isolada em diretório temporário, validando instalação, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`).
+   O teste roda de forma isolada em diretório temporário, validando inicialização com preflight, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`).

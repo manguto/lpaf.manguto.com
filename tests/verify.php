@@ -1,6 +1,10 @@
 <?php
 
 declare(strict_types=1);
+
+require dirname(__DIR__) . '/app/Core/Preflight.php';
+\App\Core\Preflight::check(dirname(__DIR__));
+
 require dirname(__DIR__) . '/vendor/autoload.php';
 require dirname(__DIR__) . '/app/Helpers/functions.php';
 
