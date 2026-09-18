@@ -1190,20 +1190,38 @@ Para analisar todas as funcionalidades atuais e validar implementações (filtro
 * **Backups**: Snapshot inicial funcional em `storage/backups/` para teste imediato de download e restauração no Dev-End.
 
 
-### Sincronização contínua com o LPAF (Upstream)
+### Sincronização contínua com o LPAF (Estratégia Upstream)
 
-Para criar um novo sistema mantendo a capacidade de receber atualizações e correções futuras do motor do LPAF:
+Ao utilizar o LPAF como base (boilerplate) para desenvolver novos produtos ou sistemas, você pode configurá-lo para continuar recebendo evoluções, patches de segurança e novas funcionalidades do motor central:
 
-1. **Vincule o novo projeto ao seu repositório (`origin`) e ao LPAF (`upstream`):**
-   ```bash
-   git remote set-url origin https://github.com/seu-usuario/meu-novo-sistema.git
-   git remote add upstream https://github.com/manguto/lpaf.manguto.com.git
-   git push -u origin master
-   ```
-2. **Dia a dia:** Seus commits e pushes vão exclusivamente para o seu novo sistema (`origin`).
-3. **Puxar melhorias do LPAF:**
-   ```bash
-   git pull upstream master
-   ```
+#### 1. Configuração inicial do novo projeto
+Após clonar o LPAF na pasta do seu novo projeto, aponte o `origin` para o seu próprio repositório e mantenha o LPAF como `upstream`:
+```bash
+# Redireciona o repositório principal para o seu novo projeto
+git remote set-url origin https://github.com/seu-usuario/meu-novo-sistema.git
+
+# Adiciona o LPAF oficial como repositório upstream (fonte do motor)
+git remote add upstream https://github.com/manguto/lpaf.manguto.com.git
+
+# Envia a base inicial para o seu novo repositório
+git push -u origin master
+```
+
+Para confirmar a configuração dos dois remotos, execute `git remote -v`:
+```text
+origin    https://github.com/seu-usuario/meu-novo-sistema.git (fetch & push)
+upstream  https://github.com/manguto/lpaf.manguto.com.git (fetch & push)
+```
+
+#### 2. Fluxo de trabalho no dia a dia
+* **Desenvolvimento do seu sistema:** Trabalhe e envie seus commits normalmente (`git push` ou sincronização do VS Code). Todas as alterações vão exclusivamente para o seu repositório (`origin`).
+* **Receber atualizações do motor LPAF:** Quando houver novidades, melhorias ou correções no LPAF oficial, basta executar:
+  ```bash
+  git pull upstream master
+  ```
+
+> [!TIP]
+> **Isolamento arquitetural:** Como o LPAF organiza módulos personalizados em diretórios independentes (`modules/`) e dados em `storage/data/`, as atualizações do motor central (`app/`, `public/`, etc.) são incorporadas via merge sem sobrescrever as entidades e regras de negócio do seu novo sistema.
+
 
 
