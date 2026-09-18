@@ -1140,13 +1140,13 @@ Para analisar todas as funcionalidades atuais e validar implementações (filtro
 |---|---|---|---|---|
 | **Desenvolvedor** | `dev` | *(sua senha do setup)* | `role_dev` | Acesso integral, menus `/dev`, backups, logs e Entity Builder |
 | **Administrador** | `admin` | `admin123456` | `role_admin` | Gestão de usuários, perfis e operações completas de CRUD |
-| **Usuário Padrão** | `carlos` | `user123456` | `role_user` | Acesso operacional padrão (leitura nos módulos) |
-| **Usuária Padrão** | `mariana` | `user123456` | `role_user` | Acesso operacional padrão para testes simultâneos |
-| **Desativado** | `inativo` | `user123456` | `role_user` | Validação de bloqueio de autenticação (`active = 0`) |
+| **Usuário Padrão** | `fulano` | `user123456` | `role_user` | Acesso operacional ilustrativo (Fulano da Silva) |
+| **Usuária Padrão** | `ciclana` | `user123456` | `role_user` | Acesso operacional ilustrativo (Ciclana de Oliveira) |
+| **Desativado** | `inativo` | `user123456` | `role_user` | Validação de bloqueio de autenticação (Beltrano Inativo) |
 
 #### Módulos e dados populados (Catálogo & Gestão Comercial)
 
-* **Clientes (6 registros)**: Compradores com múltiplos status (`Ativo`, `Potencial (Lead)`, `Inativo`), cidades variadas, incluindo cliente sem pedidos para testar exclusão livre.
+* **Clientes (6 registros)**: Cadastros ilustrativos com nomes fictícios (`Fulano de Tal`, `Ciclana de Oliveira`, `Beltrana Pereira`, etc.) e múltiplos status (`Ativo`, `Potencial (Lead)`, `Inativo`), cidades variadas, incluindo cliente sem pedidos para testar exclusão livre.
 * **Produtos (8 registros)**: Catálogo com smartphones, notebooks, fones de ouvido, livros, cadeiras ergonômicas, monitores e acessórios com preços, estoque e status ativo/inativo.
 * **Etiquetas / Tags (5 registros)**: Marcadores transversais (`Lançamento`, `Mais Vendido`, `Super Oferta`, `Frete Grátis`, `Edição Limitada`) com cores temáticas.
 * **Tabela Pivô N:N Produtos <-> Etiquetas (12 registros)**: Arquivo `storage/data/produto_tags.csv` demonstrando produtos vinculados a múltiplas etiquetas simultaneamente (ex: Smartphone Ultra associado a *Lançamento*, *Mais Vendido* e *Frete Grátis*).
