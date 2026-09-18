@@ -1,6 +1,7 @@
 Options -Indexes
+DirectorySlash Off
 
-# Bloqueio de arquivos ocultos e arquivos sensíveis de configuração e controle de versão
+# Bloqueio de arquivos ocultos (.env, .git) e arquivos de configuração sensíveis
 <IfModule mod_authz_core.c>
     <FilesMatch "^\.">
         Require all denied
@@ -23,10 +24,13 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Bloqueia acesso direto a diretórios internos da aplicação
-    RewriteRule ^(app|storage|modules|routes|views|tests|vendor)(\/|$) - [F,L,NC]
+    # Bloqueia acesso direto a diretórios internos sem rotas públicas (storage, tests, vendor)
+    RewriteRule ^(storage|tests|vendor)(\/|$) - [F,L,NC]
 
-    # Redireciona o tráfego para o document root público
+    # Bloqueia acesso direto a arquivos PHP de código interno nas pastas app, routes e views
+    RewriteRule ^(app|routes|views)\/.*\.php$ - [F,L,NC]
+
+    # Redireciona o tráfego da aplicação para o document root público
     RewriteRule ^$ public/ [L]
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

@@ -118,6 +118,9 @@ $roles = [
 $storage->write('roles.csv', ['id', 'name', 'description'], $roles);
 
 $permissions = [
+    ['id' => '*', 'name' => 'Acesso Integral (*)'],
+    ['id' => 'dashboard.view', 'name' => 'Visualizar Painel Principal'],
+    ['id' => 'profile.edit', 'name' => 'Editar Perfil Pessoal'],
     ['id' => 'users.manage', 'name' => 'Gerenciar Usuários'],
     ['id' => 'roles.manage', 'name' => 'Gerenciar Papéis'],
     ['id' => 'dev.diagnostics', 'name' => 'Acessar Diagnósticos Técnicos'],
@@ -158,7 +161,12 @@ $userRoles = [
 $storage->write('user_roles.csv', ['user_id', 'role_id'], $userRoles);
 
 $rolePermissions = [
+    // Desenvolvedor tem acesso total
+    ['role_id' => 'role_dev', 'permission_id' => '*'],
+
     // Administrador tem gestão total dos dados
+    ['role_id' => 'role_admin', 'permission_id' => 'dashboard.view'],
+    ['role_id' => 'role_admin', 'permission_id' => 'profile.edit'],
     ['role_id' => 'role_admin', 'permission_id' => 'users.manage'],
     ['role_id' => 'role_admin', 'permission_id' => 'roles.manage'],
     ['role_id' => 'role_admin', 'permission_id' => 'clientes.view'],
@@ -182,7 +190,9 @@ $rolePermissions = [
     ['role_id' => 'role_admin', 'permission_id' => 'avaliacoes.edit'],
     ['role_id' => 'role_admin', 'permission_id' => 'avaliacoes.delete'],
 
-    // Usuário Comum tem visualização e criação de pedidos/avaliações
+    // Usuário Comum tem dashboard, perfil e módulos permitidos
+    ['role_id' => 'role_user', 'permission_id' => 'dashboard.view'],
+    ['role_id' => 'role_user', 'permission_id' => 'profile.edit'],
     ['role_id' => 'role_user', 'permission_id' => 'clientes.view'],
     ['role_id' => 'role_user', 'permission_id' => 'produtos.view'],
     ['role_id' => 'role_user', 'permission_id' => 'tags.view'],
