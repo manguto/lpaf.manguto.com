@@ -161,6 +161,9 @@ Regras de negócio relevantes deverão utilizar Service.
 │       ├── js/
 │       └── img/
 │
+├── scripts/
+│   └── seed.php
+│
 ├── tests/
 │
 ├── .env
@@ -1068,3 +1071,32 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
    php tests/verify.php
    ```
    O teste roda de forma isolada em diretório temporário, validando inicialização com preflight, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`).
+
+### Carga de dados para testes e demonstração (Seed)
+
+Para analisar todas as funcionalidades atuais e validar implementações futuras (filtros, paginação, integridade referencial 1:N, visão 360°, auditoria e futuras relações N:N), execute o seeder da aplicação:
+
+```bash
+php scripts/seed.php
+```
+
+#### Contas de acesso disponíveis
+
+| Perfil | Usuário | Senha | Papel (`role`) | Finalidade de Teste |
+|---|---|---|---|---|
+| **Desenvolvedor** | `dev` | *(sua senha do setup)* | `role_dev` | Acesso integral, menus `/dev`, backups, logs e Entity Builder |
+| **Administrador** | `admin` | `admin123456` | `role_admin` | Gestão de usuários, perfis e operações completas de CRUD |
+| **Usuário Padrão** | `carlos` | `user123456` | `role_user` | Acesso operacional padrão (leitura nos módulos) |
+| **Usuária Padrão** | `mariana` | `user123456` | `role_user` | Acesso operacional padrão para testes simultâneos |
+| **Desativado** | `inativo` | `user123456` | `role_user` | Validação de bloqueio de autenticação (`active = 0`) |
+
+#### Módulos e dados populados
+
+* **Clientes (6 registros)**: Empresas com múltiplos status (`Ativo`, `Prospect`, `Em Implantação`, `Inativo`), incluindo clientes com múltiplos projetos e clientes sem projetos (para testar exclusão livre).
+* **Projetos (8 registros)**: Vinculados a Clientes via chave estrangeira com política `on_delete = restrict`. Permite testar proteção contra exclusão do pai e visão 360° reversa.
+* **Tarefas (12 registros)**: Vinculadas a Projetos com política `on_delete = cascade`, múltiplos status (`A Fazer`, `Em Andamento`, `Concluído`, `Cancelado`), prioridades e prazos variados.
+* **Equipamentos (8 registros)**: Notebooks, Desktops, Servidores, Switches e Impressoras com tombo/patrimônio, fabricantes e status ativo/inativo.
+* **Manutenções (8 registros)**: Ordens de serviço preventivas, corretivas e de upgrade vinculadas aos equipamentos com custos em R$, técnicos responsáveis e descrições detalhadas.
+* **Auditoria (10 registros)**: Eventos de auditoria em `storage/logs/audit_log.csv` simulando histórico operacional.
+* **Backups**: Snapshot inicial funcional em `storage/backups/` para teste imediato de download e restauração no Dev-End.
+
