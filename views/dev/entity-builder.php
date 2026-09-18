@@ -236,8 +236,8 @@ main {
                         <th style="text-align: center; width: 68px;">Ordem</th>
                         <th style="min-width: 130px;">Campo (ID)</th>
                         <th style="min-width: 140px;">Rótulo (Label)</th>
-                        <th style="min-width: 120px;">Tipo</th>
-                        <th style="min-width: 160px;">Opções / Relação</th>
+                        <th style="min-width: 140px;">Tipo</th>
+                        <th style="min-width: 180px;">Opções / Relação</th>
                         <th style="text-align: center; width: 55px;" title="Campo Obrigatório">Obrig.</th>
                         <th style="text-align: center; width: 50px;" title="Valor Único">Único</th>
                         <th style="text-align: center; width: 50px;" title="Visível na Listagem">Lista</th>
@@ -279,9 +279,9 @@ main {
                                         <option value="text" <?= $fType === 'text' ? 'selected' : '' ?>>Texto Longo</option>
                                         <option value="number" <?= $fType === 'number' ? 'selected' : '' ?>>Número</option>
                                         <option value="date" <?= $fType === 'date' ? 'selected' : '' ?>>Data</option>
-                                        <option value="select" <?= $isSelect ? 'selected' : '' ?>>Seleção (Select)</option>
-                                        <option value="relation" <?= $isRelation ? 'selected' : '' ?>>🔗 Relação (Chave 1:N)</option>
-                                        <option value="many_to_many" <?= $isManyToMany ? 'selected' : '' ?>>🔗 N:N (Muitos para Muitos - Tabela Pivô)</option>
+                                        <option value="select" <?= $isSelect ? 'selected' : '' ?>>Seleção</option>
+                                        <option value="relation" <?= $isRelation ? 'selected' : '' ?>>Relação 1:N</option>
+                                        <option value="many_to_many" <?= $isManyToMany ? 'selected' : '' ?>>Relação N:N</option>
                                         <option value="boolean" <?= $fType === 'boolean' ? 'selected' : '' ?>>Sim / Não</option>
                                     </select>
                                 </td>
@@ -308,7 +308,7 @@ main {
                                     </div>
                                     <div class="col-options-many-to-many" style="display: <?= $isManyToMany ? 'block' : 'none' ?>;">
                                         <select name="fields[<?= $idx ?>][relation_target]" <?= $isManyToMany ? 'required' : 'disabled' ?> style="margin-bottom: 0.35rem;">
-                                            <option value="">Vincular a (Entidade N:N)...</option>
+                                            <option value="">Vincular a...</option>
                                             <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
                                                 <?php if ($modSlug !== ($module['slug'] ?? '')): ?>
                                                     <option value="<?= e($modSlug) ?>" <?= $relTarget === $modSlug ? 'selected' : '' ?>>
@@ -359,9 +359,9 @@ main {
                                     <option value="text">Texto Longo</option>
                                     <option value="number">Número</option>
                                     <option value="date">Data</option>
-                                    <option value="select">Seleção (Select)</option>
-                                    <option value="relation">🔗 Relação (Chave 1:N)</option>
-                                    <option value="many_to_many">🔗 N:N (Muitos para Muitos - Tabela Pivô)</option>
+                                    <option value="select">Seleção</option>
+                                    <option value="relation">Relação 1:N</option>
+                                    <option value="many_to_many">Relação N:N</option>
                                     <option value="boolean">Sim / Não</option>
                                 </select>
                             </td>
@@ -386,7 +386,7 @@ main {
                                 </div>
                                 <div class="col-options-many-to-many" style="display: none;">
                                     <select name="fields[0][relation_target]" style="margin-bottom: 0.35rem;" disabled>
-                                        <option value="">Vincular a (Entidade N:N)...</option>
+                                        <option value="">Vincular a...</option>
                                         <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
                                             <option value="<?= e($modSlug) ?>">
                                                 <?= e($mod['name']) ?> (<?= e($mod['entity']) ?>)
@@ -641,9 +641,9 @@ function addFieldRow() {
                 <option value="text">Texto Longo</option>
                 <option value="number">Número</option>
                 <option value="date">Data</option>
-                <option value="select">Seleção (Select)</option>
-                <option value="relation">🔗 Relação (Chave 1:N)</option>
-                <option value="many_to_many">🔗 N:N (Muitos para Muitos - Tabela Pivô)</option>
+                <option value="select">Seleção</option>
+                <option value="relation">Relação 1:N</option>
+                <option value="many_to_many">Relação N:N</option>
                 <option value="boolean">Sim / Não</option>
             </select>
         </td>
@@ -663,7 +663,7 @@ function addFieldRow() {
             </div>
             <div class="col-options-many-to-many" style="display: none;">
                 <select name="fields[${idx}][relation_target]" style="margin-bottom: 0.35rem;" disabled>
-                    <option value="">Vincular a (Entidade N:N)...</option>
+                    <option value="">Vincular a...</option>
                     ${relationOptionsHtml.replace('<option value="">Vincular a...</option>', '')}
                 </select>
                 <input type="text" name="fields[${idx}][pivot_file]" placeholder="Arquivo pivô (ex: pivot.csv)" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" title="Opcional: nome do arquivo CSV pivô" disabled>

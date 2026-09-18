@@ -391,7 +391,7 @@ O sistema conta com um motor completo de **Relacionamentos 1:N (Chaves Estrangei
 
 * **Armazenamento Seguro:** As entidades filhas gravam exclusivamente o identificador da entidade pai na coluna correspondente (ex: `cliente_id` armazenando `cli_001`), preservando a atomicidade e legibilidade direta do CSV;
 * **Definição Declarativa:** Campos do tipo `relation` no `module.php` declaram o módulo de destino (`target`) e o campo a ser exibido como rótulo (`display`);
-* **Seleção Visual no Entity Builder:** Ao configurar ou editar uma entidade no Dev-End, o tipo `🔗 Relação (Chave 1:N)` permite vincular o campo a qualquer outro módulo existente através de menu seletor inteligente;
+* **Seleção Visual no Entity Builder:** Ao configurar ou editar uma entidade no Dev-End, o tipo `Relação 1:N` permite vincular o campo a qualquer outro módulo existente através de menu seletor inteligente;
 * **Formulários Dinâmicos:** As telas de criação e edição renderizam `<select>` populados dinamicamente com os registros da entidade pai (`Rótulo (ID)`) e oferecem atalho imediato para cadastro caso a entidade pai ainda esteja vazia;
 * **Exibição nas Listagens e Detalhes:** As tabelas de listagem (`/app/{slug}`) e detalhes (`show`) substituem os códigos brutos pelos nomes dos registros vinculados, com links diretos para a entidade relacionada;
 * **Sub-listagem Reversa na Visualização do Pai (Visão 360°):** Na visualização de um registro pai (`/app/<pai>/<id>`), o sistema descobre e renderiza automaticamente tabelas com todos os registros filhos vinculados (ex.: contratos do cliente, equipamentos do cliente), além de botão de atalho para cadastrar novos filhos já pré-vinculados;
@@ -406,7 +406,7 @@ O sistema conta com suporte completo a **Relacionamentos N:N (Muitos para Muitos
 
 * **Tabelas Pivô Dedicadas em CSV:** As associações são armazenadas exclusivamente em arquivos CSV intermediários (ex: `projeto_equipamentos.csv` ou padrão `{pai}_{destino}.csv`), estruturados com `id`, `created_at`, `{parent_key}` e `{target_key}`, mantendo os CSVs principais das entidades limpos e sem quebra da primeira forma normal;
 * **Configuração Declarativa em `module.php`:** Definição simples via tipo `many_to_many`, indicando o módulo de destino (`target`), campo descritivo (`display`), arquivo pivô opcional (`pivot_file`), e chaves (`parent_key`, `target_key`);
-* **Seleção Visual no Entity Builder:** O Dev-End permite selecionar o tipo `🔗 N:N (Muitos para Muitos - Tabela Pivô)`, selecionar o módulo relacionado e opcionalmente personalizar o nome do arquivo pivô CSV;
+* **Seleção Visual no Entity Builder:** O Dev-End permite selecionar o tipo `Relação N:N`, selecionar o módulo relacionado e opcionalmente personalizar o nome do arquivo pivô CSV;
 * **Interface de Associação Confortável com Busca em Tempo Real (`form.php`):** Formulários de cadastro e edição renderizam um painel contrastado de cartões/checkboxes com filtro de pesquisa instantâneo via JavaScript e botões "Marcar Todos / Desmarcar Todos";
 * **Listagem Inteligente (`index.php`):** Colunas N:N exibem badges dos primeiros itens associados acompanhados de contador cumulativo (`+N`) para preservar a densidade visual;
 * **Detalhamento e Links Diretos (`show.php`):** Na tela de detalhes da entidade, os registros associados são renderizados como badges clicáveis com atalho imediato para o registro correspondente;
