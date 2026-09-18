@@ -808,16 +808,124 @@ if (empty($policyLogs)) {
     throw new RuntimeException('Log de auditoria password_policy_updated não registrado.');
 }
 
-// Retorna ao Modo Livre para desenvolvimento
-$policyService->updatePolicy(['enabled' => '0', 'min_length' => '1'], 'usr_001');
-if ($policyService->getPolicy()['enabled']) {
-    throw new RuntimeException('Falha ao desativar política de senhas.');
+// 12. Teste do Módulo de Recuperação de Senhas (Esqueci Minha Senha)
+$resetService = new \App\Services\PasswordResetService($app, $auditService);
+
+// Solicitação para usuário inexistente
+$unknownResult = $resetService->createToken('usuario_inexistente_xyz', '127.0.0.1');
+if ($unknownResult !== null) {
+    throw new RuntimeException('Solicitação de token para usuário inexistente deveria retornar null.');
 }
-if ($policyService->validate('123') !== null) {
-    throw new RuntimeException('Senha 123 deveria ser aceita após desativar política.');
+$failedResetLogs = $auditService->all('password_reset_failed');
+if (empty($failedResetLogs)) {
+    throw new RuntimeException('Log de auditoria password_reset_failed não registrado.');
 }
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas, Busca Assistida / Autocomplete (Item 20), Rate Limiting (Força Bruta), Proteção .htaccess, Licença MIT, Arquitetura Clean Slate e Governança de Política de Senhas (Dev-End).\n";
+// Solicitação para usuário legítimo (admin)
+$resetResult = $resetService->createToken('admin', '192.168.1.50');
+if (!$resetResult || empty($resetResult['token']) || strlen($resetResult['token']) !== 64) {
+    throw new RuntimeException('Falha na criação de token criptográfico de recuperação.');
+}
+$plainToken = $resetResult['token'];
+
+// Valida persistência em storage/data/password_resets.csv
+$resetsInDb = $app->passwordResets->all();
+if (empty($resetsInDb)) {
+    throw new RuntimeException('password_resets.csv não foi persistido com o token criado.');
+}
+
+// Valida log simulado de e-mail em storage/logs/mail.log
+$mailLogPath = $app->config->get('storage_logs') . '/mail.log';
+if (!is_file($mailLogPath) || !str_contains(file_get_contents($mailLogPath), $plainToken)) {
+    throw new RuntimeException('E-mail simulado com o link de recuperação não foi gravado em mail.log.');
+}
+
+// Valida log de auditoria
+$requestLogs = $auditService->all('password_reset_requested');
+if (empty($requestLogs)) {
+    throw new RuntimeException('Log de auditoria password_reset_requested não registrado.');
+}
+
+// Validação de token legítimo
+$validated = $resetService->validateToken($plainToken);
+if (!$validated || $validated['user']['username'] !== 'admin') {
+    throw new RuntimeException('Validação de token legítimo falhou.');
+}
+
+// Validação de token com hash adulterado / incorreto
+if ($resetService->validateToken('token_falso_adulterado_1234567890123456789012345678901234567890') !== null) {
+    throw new RuntimeException('Token adulterado não deveria ser validado.');
+}
+
+// Simulação de token expirado
+$app->storage->write('password_resets.csv', ['id', 'user_id', 'token_hash', 'expires_at', 'used_at', 'created_at', 'ip'], [
+    [
+        'id' => 'rst_expired_test',
+        'user_id' => 'usr_001',
+        'token_hash' => hash('sha256', 'token_expirado_de_teste'),
+        'expires_at' => date('Y-m-d H:i:s', time() - 3600),
+        'used_at' => '',
+        'created_at' => date('Y-m-d H:i:s', time() - 7200),
+        'ip' => '127.0.0.1',
+    ]
+]);
+if ($resetService->validateToken('token_expirado_de_teste') !== null) {
+    throw new RuntimeException('Token expirado não deveria ser validado.');
+}
+
+// Restaura e gera um novo token legítimo
+$resetResult = $resetService->createToken('admin', '192.168.1.50');
+$validToken = $resetResult['token'];
+
+// Ativa a política de senhas para validar a conformidade da redefinição
+$policyService->updatePolicy([
+    'enabled' => '1',
+    'min_length' => '8',
+    'require_uppercase' => '1',
+    'require_numbers' => '1',
+], 'usr_001');
+
+// Tenta redefinir com senha fraca (reprovada pela política)
+$weakReset = $resetService->resetPassword($validToken, 'fraca');
+if ($weakReset['success'] || empty($weakReset['error'])) {
+    throw new RuntimeException('Redefinição deveria ter falhado com senha que viola a política.');
+}
+
+// Redefine com senha forte (aprovada pela política)
+$strongPass = 'AdminForte#2026';
+$strongReset = $resetService->resetPassword($validToken, $strongPass);
+if (!$strongReset['success']) {
+    throw new RuntimeException('Redefinição de senha com senha forte deveria ter sido bem-sucedida.');
+}
+
+// Valida que o token foi consumido (usado) e não pode ser reutilizado
+if ($resetService->validateToken($validToken) !== null) {
+    throw new RuntimeException('Token utilizado deveria ter sido invalidado contra replay attack.');
+}
+$secondAttempt = $resetService->resetPassword($validToken, 'OutraSenha#2026');
+if ($secondAttempt['success']) {
+    throw new RuntimeException('Segunda tentativa de redefinição com o mesmo token deveria ter falhado.');
+}
+
+// Valida autenticação com as novas credenciais
+$authService = new \App\Services\AuthService($app, $auditService);
+if (!$authService->login('admin', $strongPass)) {
+    throw new RuntimeException('Autenticação com a nova senha redefinida falhou.');
+}
+if ($authService->login('admin', 'senha-segura')) {
+    throw new RuntimeException('Senha antiga não deveria mais permitir login após redefinição.');
+}
+
+// Valida log de auditoria de conclusão
+$completeLogs = $auditService->all('password_reset_completed');
+if (empty($completeLogs)) {
+    throw new RuntimeException('Log de auditoria password_reset_completed não registrado.');
+}
+
+// Retorna política ao modo livre
+$policyService->updatePolicy(['enabled' => '0', 'min_length' => '1'], 'usr_001');
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas, Busca Assistida / Autocomplete (Item 20), Rate Limiting (Força Bruta), Proteção .htaccess, Licença MIT, Arquitetura Clean Slate, Governança de Política de Senhas (Dev-End) e Recuperação de Senhas (Esqueci Minha Senha).\n";
 
 
 

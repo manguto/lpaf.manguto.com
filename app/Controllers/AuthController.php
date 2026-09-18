@@ -14,7 +14,11 @@ final class AuthController extends Controller
 {
     public function showLogin(Request $request): void
     {
-        $this->view('auth/login', ['error' => $request->input('error'), 'installed' => $request->input('installed')]);
+        $this->view('auth/login', [
+            'error' => $request->input('error'),
+            'installed' => $request->input('installed'),
+            'reset' => $request->input('reset'),
+        ]);
     }
     public function login(Request $request): void
     {

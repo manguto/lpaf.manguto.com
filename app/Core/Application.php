@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Repositories\PasswordResetRepository;
 use App\Repositories\PermissionRepository;
 use App\Repositories\RoleRepository;
 use App\Repositories\SettingsRepository;
@@ -15,6 +16,7 @@ final class Application
     public RoleRepository $roles;
     public PermissionRepository $permissions;
     public SettingsRepository $settings;
+    public PasswordResetRepository $passwordResets;
     public ModuleManager $modules;
     public RateLimiter $rateLimiter;
     public function __construct(public Config $config, public CsvStorage $storage, public Request $request)
@@ -23,6 +25,7 @@ final class Application
         $this->roles = new RoleRepository($storage);
         $this->permissions = new PermissionRepository($storage);
         $this->settings = new SettingsRepository($storage);
+        $this->passwordResets = new PasswordResetRepository($storage);
         $this->modules = new ModuleManager($this);
         $this->rateLimiter = new RateLimiter($config);
     }

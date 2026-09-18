@@ -1064,11 +1064,12 @@ Status do roadmap:
 23. [x] Licença de Software Formalizada (distribuição sob licença MIT, arquivo `LICENSE` na raiz do repositório)
 24. [x] Arquitetura Clean Slate & Módulos de Modelo Sob Demanda (diretório `modules/` 100% limpo no repositório com apenas `.gitkeep`, eliminando acoplamentos e prevenindo conflitos de merge em atualizações `upstream`; templates/presets de demonstração isolados em `templates/presets/ecommerce/modules/`; instalação automática sob demanda pelo Dev-End ou CLI e botão de limpeza total com 1 clique e salvaguarda automática)
 25. [x] Governança de Política de Senhas no Dev-End (página dedicada em `/dev/password-policy`, toggle liga/desliga para modo desenvolvimento livre sem restrições, calibração granular de tamanho mínimo, letras maiúsculas, minúsculas, números e símbolos, presets rápidos em 1 clique e simulador de senha em tempo real com badges visuais reativos)
-26. [ ] Paginação e Ordenação nas Listagens (controle dinâmico de registros por página e ordenação clicável por coluna no CRUD)
-27. [ ] Exportação e Importação de Dados CSV (exportação de listagens com filtros ativos e carga em lote com validação prévia de colunas)
-28. [ ] Notificações e Alertas Visuais Flutuantes (sistema leve de *toast notifications* em Vanilla JS)
-29. [ ] Logs Avançados de Auditoria por Módulo (rastreamento detalhado de diffs antes/depois nas alterações do CRUD declarativo)
-30. [ ] Atributos Extras em Tabelas Pivô N:N (metadados adicionais como status ou papel diretamente na linha de junção)
+26. [x] Módulo de Recuperação de Senhas - "Esqueci Minha Senha" (link direto na tela de login, formulário com proteção anti-força bruta via RateLimiter, geração de tokens criptográficos de uso único de 64 caracteres hex com hash SHA-256 persistido em `storage/data/password_resets.csv`, validade de 60 minutos e invalidação imediata pós-uso, log de e-mail simulado em `storage/logs/mail.log` e atalho visual no ambiente de desenvolvimento local XAMPP, redefinição com validação estrita contra a Política de Senhas ativa, atualização segura em `users.csv` e rastreamento completo em auditoria)
+27. [ ] Paginação e Ordenação nas Listagens (controle dinâmico de registros por página e ordenação clicável por coluna no CRUD)
+28. [ ] Exportação e Importação de Dados CSV (exportação de listagens com filtros ativos e carga em lote com validação prévia de colunas)
+29. [ ] Notificações e Alertas Visuais Flutuantes (sistema leve de *toast notifications* em Vanilla JS)
+30. [ ] Logs Avançados de Auditoria por Módulo (rastreamento detalhado de diffs antes/depois nas alterações do CRUD declarativo)
+31. [ ] Atributos Extras em Tabelas Pivô N:N (metadados adicionais como status ou papel diretamente na linha de junção)
 
 ## 41. Contribuições e Manutenção da Documentação
 
@@ -1193,6 +1194,29 @@ O LPAF oferece controle total sobre os parâmetros de complexidade de credenciai
 * **Testador em Tempo Real:** A tela conta com um simulador interativo em Vanilla JS com badges visuais reativos, permitindo experimentar senhas e verificar instantaneamente se atendem aos parâmetros configurados.
 * **Predefinições Rápidas em 1 Clique:** Botões para carregar o *Preset Modo Dev Livre*, *Preset Padrão Seguro* ou *Preset Alta Segurança*.
 * **Auditoria de Alterações:** Todas as mudanças nos parâmetros de política de senhas são registradas automaticamente na trilha de auditoria (`password_policy_updated`).
+
+### Recuperação de Senhas (Esqueci Minha Senha)
+
+O LPAF inclui um fluxo completo e seguro para recuperação de credenciais de acesso, projetado para funcionar tanto em servidores corporativos com SMTP quanto em ambientes de desenvolvimento local (como XAMPP/WAMP sem servidor de e-mail ativo):
+
+1. **Ponto de Entrada Amigável:** Na tela de login (`/login`), há o link direto *"Esqueci minha senha"*, posicionado estrategicamente ao lado do rótulo de senha.
+2. **Solicitação com Proteção contra Força Bruta (`/forgot-password`):**
+   - O usuário informa seu login ou nome de usuário (`username`).
+   - A requisição é protegida por `GuestMiddleware`, `CsrfMiddleware` e rate limiting por IP (`App\Core\RateLimiter`), bloqueando tentativas excessivas de varredura ou enumeração de contas.
+3. **Tokens Criptográficos de Uso Único:**
+   - Gera um token de 64 caracteres hexadecimais (`bin2hex(random_bytes(32))`).
+   - Armazena apenas o hash criptográfico SHA-256 do token em `storage/data/password_resets.csv`.
+   - Validade padrão estrita de **60 minutos** (`expires_at`).
+   - Invalidação imediata de quaisquer tokens anteriores não utilizados emitidos para o mesmo usuário.
+4. **Suporte Nativo a Desenvolvimento Local (XAMPP / Dev Mode):**
+   - Como servidores locais geralmente não possuem serviço SMTP configurado, o LPAF registra uma simulação completa do e-mail com data, destinatário, IP e link seguro em `storage/logs/mail.log`.
+   - Quando o sistema roda com `APP_ENV=local`, a própria tela de confirmação de envio exibe um destaque especial com o botão direto para redefinição imediata, agilizando o ciclo de testes locais.
+5. **Tela de Redefinição com Validação de Políticas (`/reset-password?token=...`):**
+   - Valida a existência, integridade, expiração e status de consumo do token.
+   - Apresenta mensagem explicativa e botão para nova solicitação caso o link seja inválido ou expirado.
+   - Submete a nova senha digitada à **Governança de Política de Senhas** ativa no momento (`PasswordPolicyService`), assegurando conformidade com as regras corporativas vigentes.
+   - Atualiza o hash seguro em `users.csv` via `password_hash(..., PASSWORD_DEFAULT)`, marca o token como utilizado (`used_at = NOW()`) prevenindo ataques de repetição (*replay attack*) e grava o evento `password_reset_completed` na auditoria.
+   - Redireciona para o login com mensagem flash de confirmação (`?reset=1`).
 
 #### Contas de acesso disponíveis
 

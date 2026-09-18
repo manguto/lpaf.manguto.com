@@ -16,7 +16,9 @@ final class AuthService
             $this->audit->log('login_failed', null, 'username=' . substr($username, 0, 80));
             return false;
         }
-        session_regenerate_id(true);
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
         $_SESSION['user_id'] = $user['id'];
         $this->audit->log('login', $user['id']);
         return true;
