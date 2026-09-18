@@ -201,10 +201,57 @@ main {
                 <span class="muted" style="font-size: 0.75rem;">Identificadores gerados: <code><?= e($module['prefix'] ?? 'cli') ?>_001</code>.</span>
             </div>
 
-            <div>
+            <div style="position: relative;">
                 <label for="icon">Ícone / Emoji:</label>
-                <input type="text" id="icon" name="icon" value="<?= e($module['icon'] ?? '📁') ?>" maxlength="4" style="text-align: center; font-size: 1.2rem;">
-                <span class="muted" style="font-size: 0.75rem;">Emoji visual no dashboard.</span>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div id="emoji-preview-btn" 
+                         onclick="toggleEmojiPicker()" 
+                         title="Clique para abrir a lista de emojis"
+                         style="width: 44px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: var(--card-bg, #ffffff); border: 1.5px solid #94a3b8; border-radius: var(--radius-sm); cursor: pointer; user-select: none; transition: transform 0.1s, border-color 0.15s;">
+                        <span id="emoji-preview-char"><?= e($module['icon'] ?? '📁') ?></span>
+                    </div>
+                    <input type="text" id="icon" name="icon" value="<?= e($module['icon'] ?? '📁') ?>" maxlength="4" 
+                           style="width: 70px; text-align: center; font-size: 1.2rem; margin-top: 0; height: 38px;" 
+                           oninput="updateEmojiPreview(this.value)">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleEmojiPicker()" style="height: 38px; white-space: nowrap; font-size: 0.82rem; padding: 0 0.75rem;">
+                        Escolher ▾
+                    </button>
+                </div>
+
+                <!-- Chips de Acesso Rápido -->
+                <div style="display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.4rem; align-items: center;">
+                    <span class="muted" style="font-size: 0.72rem; margin-right: 0.15rem;">Sugestões:</span>
+                    <?php 
+                    $quickEmojis = ['📁', '👥', '💼', '💻', '📦', '📊', '⚙️', '📝', '🛒', '💰', '🔧', '🔒'];
+                    foreach ($quickEmojis as $qEmo): ?>
+                        <button type="button" 
+                                onclick="selectEmoji('<?= $qEmo ?>')" 
+                                title="Selecionar <?= $qEmo ?>"
+                                style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 1px 5px; font-size: 0.95rem; cursor: pointer; line-height: 1.2; transition: all 0.12s;"
+                                onmouseover="this.style.background='#e2e8f0'; this.style.borderColor='#94a3b8';"
+                                onmouseout="this.style.background='#f1f5f9'; this.style.borderColor='#cbd5e1';">
+                            <?= $qEmo ?>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Popover com Catálogo Completo de Emojis -->
+                <div id="emoji-picker-dropdown" 
+                     style="display: none; position: absolute; top: calc(100% + 4px); right: 0; z-index: 1000; width: 330px; background: #ffffff; border: 1.5px solid #94a3b8; border-radius: var(--radius-sm, 6px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.25), 0 8px 10px -6px rgba(0,0,0,0.15); padding: 0.75rem;">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <strong style="font-size: 0.85rem; color: #0f172a;">Biblioteca de Ícones / Emojis</strong>
+                        <button type="button" onclick="closeEmojiPicker()" style="background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #64748b; line-height: 1; padding: 0 0.25rem;">&times;</button>
+                    </div>
+
+                    <input type="text" id="emoji-search-input" placeholder="Pesquisar emoji (ex: pasta, cliente)..." 
+                           oninput="filterEmojis(this.value)"
+                           style="width: 100%; font-size: 0.8rem; padding: 0.35rem 0.55rem; height: 32px; margin-top: 0; margin-bottom: 0.6rem; border: 1px solid #cbd5e1;">
+
+                    <div id="emoji-list-scroll" style="max-height: 240px; overflow-y: auto; padding-right: 2px;">
+                        <!-- Renderizado via JavaScript -->
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -703,4 +750,176 @@ function removeFieldRow(btn) {
 
 document.querySelectorAll('#fields-tbody tr.field-row').forEach(tr => setupDragAndDrop(tr));
 reindexFields();
+
+// --- Catálogo e Seletor de Emojis / Ícones ---
+const emojiCatalog = [
+    {
+        category: 'Gestão & Negócios',
+        items: [
+            { char: '📁', name: 'Pasta de Arquivos', tags: 'pasta arquivo pasta doc' },
+            { char: '💼', name: 'Maleta / Negócios', tags: 'maleta trabalho empresa negocio' },
+            { char: '📊', name: 'Gráfico de Barras', tags: 'relatorio estatistica dados analytics' },
+            { char: '📈', name: 'Gráfico Ascendente', tags: 'crescimento evolucao lucro meta' },
+            { char: '📋', name: 'Prancheta / Tarefas', tags: 'tarefas checklist lista afazeres' },
+            { char: '📝', name: 'Anotações / Registro', tags: 'nota redacao rascunho formulario' },
+            { char: '📅', name: 'Calendário / Agenda', tags: 'agenda prazo evento compromisso' },
+            { char: '🏷️', name: 'Etiqueta / Tag', tags: 'categoria classificacao rotulo' },
+            { char: '📌', name: 'Alfinete / Destaque', tags: 'marcador pino fixado' },
+            { char: '🎯', name: 'Alvo / Objetivos', tags: 'meta kpi meta foco' },
+            { char: '🏢', name: 'Edifício / Empresa', tags: 'organizacao predio matriz filial' },
+            { char: '🏭', name: 'Indústria / Fábrica', tags: 'producao manufatura estoque planta' }
+        ]
+    },
+    {
+        category: 'Pessoas, Clientes & Contatos',
+        items: [
+            { char: '👥', name: 'Grupo de Usuários', tags: 'usuarios equipe time membros' },
+            { char: '👤', name: 'Perfil / Indivíduo', tags: 'cliente usuario contato pessoa' },
+            { char: '👔', name: 'Executivo / Gerente', tags: 'colaborador lider funcionario' },
+            { char: '🧑‍💼', name: 'Atendimento / Operador', tags: 'atendente funcionario agente' },
+            { char: '🤝', name: 'Parceria / Acordo', tags: 'contrato negociacao aperto de mao' },
+            { char: '📞', name: 'Telefone / Chamadas', tags: 'ligacao suporte fone call' },
+            { char: '✉️', name: 'E-mail / Correio', tags: 'mensagem correio contato caixa postal' },
+            { char: '💬', name: 'Chat / Mensagens', tags: 'conversa comunicacao whatsapp' },
+            { char: '🎓', name: 'Treinamento / Alunos', tags: 'educacao curso capacitacao escola' },
+            { char: '🏥', name: 'Saúde / Pacientes', tags: 'clinica medico hospital atendimento' }
+        ]
+    },
+    {
+        category: 'Vendas, Financeiro & Operações',
+        items: [
+            { char: '💰', name: 'Saco de Moedas', tags: 'dinheiro financeiro capital caixa' },
+            { char: '💳', name: 'Cartão de Crédito', tags: 'pagamento cartao cobranca fatura' },
+            { char: '💵', name: 'Cédula / Dinheiro', tags: 'grana especie fluxo de caixa' },
+            { char: '🧾', name: 'Recibo / Nota Fiscal', tags: 'fatura cupom comprovante fiscal' },
+            { char: '🛒', name: 'Carrinho de Compras', tags: 'pedido ecommerce compras venda' },
+            { char: '🛍️', name: 'Sacola de Compras', tags: 'loja varejo sacola' },
+            { char: '📦', name: 'Pacote / Mercadoria', tags: 'estoque caixa produto entrega' },
+            { char: '🚚', name: 'Caminhão / Frete', tags: 'entrega logistica despacho transporte' },
+            { char: '⚖️', name: 'Balança / Jurídico', tags: 'advocacia lei contratos justica' },
+            { char: '🪙', name: 'Moeda', tags: 'valor taxa cambio preco' }
+        ]
+    },
+    {
+        category: 'TI, Sistemas & Ferramentas',
+        items: [
+            { char: '💻', name: 'Notebook / Computador', tags: 'ti sistema computacao desenvolvimento' },
+            { char: '🖥️', name: 'Monitor / Servidor', tags: 'computador terminal servidor tela' },
+            { char: '📱', name: 'Celular / Mobile', tags: 'smartphone aplicativo aparelho' },
+            { char: '🗄️', name: 'Armário / Banco de Dados', tags: 'banco de dados servidor storage arquivo' },
+            { char: '🌐', name: 'Rede / Internet', tags: 'web portal online dominio' },
+            { char: '⚙️', name: 'Engrenagens / Config', tags: 'configuracoes sistema parametros ajustes' },
+            { char: '🔧', name: 'Ferramenta / Manutenção', tags: 'conserto suporte tecnico servico' },
+            { char: '🔒', name: 'Cadeado / Segurança', tags: 'privacidade permissao acesso autenticacao' },
+            { char: '🔑', name: 'Chave de Acesso', tags: 'token senha login credencial' },
+            { char: '🖨️', name: 'Impressora', tags: 'documento impressao papel' },
+            { char: '💡', name: 'Ideia / Lâmpada', tags: 'inovacao sugestao melhoria' },
+            { char: '⭐', name: 'Estrela / Avaliação', tags: 'favorito destaque nota ranking' },
+            { char: '🔔', name: 'Notificação / Sino', tags: 'alerta aviso lembrete' },
+            { char: '🚩', name: 'Bandeira / Status', tags: 'marcador prioridade status bandeira' }
+        ]
+    }
+];
+
+function renderEmojiList(query = '') {
+    const container = document.getElementById('emoji-list-scroll');
+    if (!container) return;
+
+    const q = query.trim().toLowerCase();
+    let html = '';
+    let totalFound = 0;
+
+    emojiCatalog.forEach(cat => {
+        const matches = cat.items.filter(item => {
+            if (!q) return true;
+            return item.char.includes(q) || 
+                   item.name.toLowerCase().includes(q) || 
+                   item.tags.toLowerCase().includes(q);
+        });
+
+        if (matches.length > 0) {
+            totalFound += matches.length;
+            html += `<div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin: 0.5rem 0 0.3rem 0; letter-spacing: 0.04em;">${cat.category}</div>`;
+            html += `<div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 0.4rem;">`;
+            matches.forEach(item => {
+                const escapedChar = item.char.replace(/'/g, "\\'");
+                html += `
+                    <button type="button" 
+                            onclick="selectEmoji('${escapedChar}')" 
+                            title="${item.name}" 
+                            style="font-size: 1.35rem; padding: 4px 0; height: 38px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s;"
+                            onmouseover="this.style.background='#e2e8f0'; this.style.borderColor='#94a3b8'; this.style.transform='scale(1.15)';"
+                            onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e2e8f0'; this.style.transform='scale(1)';">
+                        ${item.char}
+                    </button>
+                `;
+            });
+            html += `</div>`;
+        }
+    });
+
+    if (totalFound === 0) {
+        html = `<div style="text-align: center; padding: 1.5rem 0.5rem; color: #64748b; font-size: 0.82rem;">Nenhum emoji encontrado para "<strong>${escapeHtml(query)}</strong>".</div>`;
+    }
+
+    container.innerHTML = html;
+}
+
+function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
+}
+
+function filterEmojis(val) {
+    renderEmojiList(val);
+}
+
+function selectEmoji(char) {
+    const input = document.getElementById('icon');
+    if (input) {
+        input.value = char;
+        updateEmojiPreview(char);
+    }
+    closeEmojiPicker();
+}
+
+function updateEmojiPreview(val) {
+    const preview = document.getElementById('emoji-preview-char');
+    if (preview) {
+        preview.textContent = val.trim() || '📁';
+    }
+}
+
+function toggleEmojiPicker() {
+    const dropdown = document.getElementById('emoji-picker-dropdown');
+    if (!dropdown) return;
+    if (dropdown.style.display === 'none' || !dropdown.style.display) {
+        dropdown.style.display = 'block';
+        const search = document.getElementById('emoji-search-input');
+        if (search) {
+            search.value = '';
+            renderEmojiList('');
+            setTimeout(() => search.focus(), 50);
+        }
+    } else {
+        dropdown.style.display = 'none';
+    }
+}
+
+function closeEmojiPicker() {
+    const dropdown = document.getElementById('emoji-picker-dropdown');
+    if (dropdown) dropdown.style.display = 'none';
+}
+
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('emoji-picker-dropdown');
+    if (!dropdown || dropdown.style.display === 'none') return;
+    
+    const emojiWrapper = dropdown.parentElement;
+    if (emojiWrapper && !emojiWrapper.contains(event.target)) {
+        closeEmojiPicker();
+    }
+});
+
+// Inicialização da lista de emojis
+renderEmojiList();
 </script>
