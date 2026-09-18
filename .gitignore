@@ -1,7 +1,24 @@
+# Dependências e Ambiente
 /vendor/
 /.env
+/.env.local
+/.env.*.local
+
+# Armazenamento e Dados Locais
 /storage/data/*.csv
 /storage/logs/*.csv
 /storage/backups/*
 /storage/tmp/*
 !.gitkeep
+
+# Arquivos de IDE e Sistema Operacional
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.tmp
