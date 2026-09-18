@@ -1,15 +1,24 @@
 # Dependências e Ambiente
 /vendor/
 /.env
-/.env.local
-/.env.*.local
+/.env.*
+!.env.example
 
-# Armazenamento e Dados Locais
-/storage/data/*.csv
-/storage/logs/*.csv
+# Armazenamento e Dados Locais (ignora tudo, preservando .gitkeep)
+/storage/data/*
+!/storage/data/.gitkeep
+
+/storage/logs/*
+!/storage/logs/.gitkeep
+
 /storage/backups/*
+!/storage/backups/.gitkeep
+
 /storage/tmp/*
-!.gitkeep
+!/storage/tmp/.gitkeep
+
+# Arquivos de Log gerais
+*.log
 
 # Arquivos de IDE e Sistema Operacional
 .DS_Store
