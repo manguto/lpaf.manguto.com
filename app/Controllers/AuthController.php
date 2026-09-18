@@ -18,9 +18,27 @@ final class AuthController extends Controller
     }
     public function login(Request $request): void
     {
-        if (!(new AuthService($this->app, new AuditService($this->app->storage)))->login(trim((string) $request->input('username')), (string) $request->input('password'))) {
-            Response::redirect('/login?error=Credenciais inválidas.');
+        $username = trim((string) $request->input('username'));
+        $password = (string) $request->input('password');
+        $throttleKey = 'login_' . md5($request->ip() . '|' . strtolower($username));
+
+        if ($this->app->rateLimiter->tooManyAttempts($throttleKey, 5)) {
+            $seconds = $this->app->rateLimiter->availableIn($throttleKey);
+            $minutes = max(1, (int) ceil($seconds / 60));
+            Response::redirect('/login?error=' . urlencode("Muitas tentativas falhas. Tente novamente em {$minutes} minuto(s)."));
         }
+
+        $authService = new AuthService($this->app, new AuditService($this->app->storage));
+        if (!$authService->login($username, $password)) {
+            $attempts = $this->app->rateLimiter->hit($throttleKey, 300, 5);
+            $remaining = max(0, 5 - $attempts);
+            if ($remaining === 0) {
+                Response::redirect('/login?error=' . urlencode("Conta bloqueada temporariamente por 5 minutos devido a excesso de tentativas inválidas."));
+            }
+            Response::redirect('/login?error=' . urlencode("Credenciais inválidas. Restam {$remaining} tentativa(s)."));
+        }
+
+        $this->app->rateLimiter->clear($throttleKey);
         Response::redirect('/app');
     }
     public function logout(Request $request): void

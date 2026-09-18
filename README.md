@@ -853,23 +853,29 @@ O arquivo:
 
 não deverá ser versionado.
 
-## 33. Segurança mínima
+## 33. Segurança mínima e Proteções de Produção
 
-Implementar desde a base:
+Implementado e operacional desde a base da arquitetura:
 
-* `password_hash()`;
-* `password_verify()`;
-* proteção CSRF;
-* escape de HTML;
-* validação de entradas;
-* regeneração de sessão;
-* cookies HttpOnly;
-* SameSite;
-* Secure quando HTTPS estiver ativo;
-* controle de autorização no servidor;
-* proteção dos arquivos internos;
-* tratamento apropriado de erros HTTP;
-* proteção básica contra tentativas repetidas de login.
+* `password_hash()` e `password_verify()` utilizando algoritmos modernos recomendados pelo PHP;
+* Proteção CSRF obrigatória em todos os formulários e rotas POST/PUT/DELETE;
+* Escape sistemático de HTML (`htmlspecialchars`) em todas as saídas das views via função utilitária `e()`;
+* Validação estrita de entradas, tipos de dados e limites nos controllers e no CRUD declarativo;
+* Regeneração do ID de sessão (`session_regenerate_id(true)`) no login para prevenir *session fixation*;
+* Cookies de sessão seguros com flags `HttpOnly`, `SameSite=Lax` e `Secure` automático sob HTTPS;
+* Controle de autorização granular no servidor (RBAC) validado antes de qualquer renderização ou mutação;
+* **Tratamento Apropriado de Erros HTTP:** Views dedicadas e limpas para códigos 403, 404 e 500 sem vazamento de stack traces em produção;
+* **Blindagem de Arquivos Internos:**
+  - `storage/.htaccess`: Bloqueio irrestrito (`Require all denied` / `Deny from all`) impedindo qualquer download direto de arquivos CSV, logs, backups e dados temporários, mesmo se o servidor web tiver o DocumentRoot apontado incorretamente para a raiz;
+  - `.htaccess` raiz e `public/.htaccess`: Bloqueio de arquivos ocultos (`.env`, `.git`), arquivos de controle e empacotamento (`composer.*`, `package.*`, `phpunit.xml`, `README.md`, `LICENSE`) e proibição de acesso direto aos diretórios internos (`app/`, `storage/`, `modules/`, `routes/`, `views/`, `tests/`, `vendor/`);
+* **Proteção contra Ataques de Força Bruta e Rate Limiting (`App\Core\RateLimiter`):**
+  - Monitoramento de tentativas falhas de autenticação baseado no par IP do cliente + usuário informado (`login_{hash}`);
+  - Identificação robusta do IP do cliente (`Request::ip()`) com suporte a cabeçalhos de proxy reverso (`CF-Connecting-IP`, `X-Forwarded-For`) e validação estrita;
+  - Limite de 5 tentativas consecutivas com janela de bloqueio temporário de 5 minutos (300 segundos);
+  - Feedback visual amigável informando a quantidade de tentativas restantes ou o tempo restante de bloqueio em minutos;
+  - Gravação persistente e concorrente em `storage/tmp/rate_limits.csv` protegida com travas exclusivas `flock()` e escrita atômica;
+  - Expurgo automático e transparente de registros de tentativas inativas com mais de 24 horas.
+
 
 ## 34. Integridade dos CSV
 
@@ -1049,8 +1055,14 @@ Status do roadmap:
 18. [x] Verificação Prévia de Ambiente e Diagnóstico de Requisitos (Preflight Checks: detecção de dependências ausentes, validação de PHP 8.2+, extensões e permissões com interface web amigável, auto-instalação e saída formatada no CLI)
 19. [x] Relacionamentos N:N com Tabelas Pivot Declarativas (associações muitos-para-muitos via CSVs intermediários de junção, interface de checkboxes com busca em tempo real, resolução bidirecional na Visão 360°, exibição resumida na listagem e sincronização atômica)
 20. [x] Busca Assistida / Autocomplete em Relações (componente leve em Vanilla JS para seleção instantânea com filtro em tempo real, navegação por teclado, botão de limpeza rápida, badges de identificador e feedback de busca vazia em relações 1:N e N:N)
-21: [ ] Paginação e Ordenação nas Listagens (controle dinâmico de registros por página e ordenação clicável por coluna no CRUD)
-22: [ ] Exportação e Importação de Dados CSV (exportação de listagens com filtros ativos e carga em lote com validação prévia de colunas)
+21. [x] Proteção contra Força Bruta & Rate Limiting no Login (`App\Core\RateLimiter`, bloqueio temporário de 5 minutos após 5 falhas, resolução segura de IP e feedback com contador regressivo)
+22. [x] Blindagem e Proteção de Arquivos Internos (`storage/.htaccess` com `Require all denied`, proteção de dotfiles e bloqueio de acesso a diretórios internos no `.htaccess` raiz)
+23. [x] Licença de Software Formalizada (distribuição sob licença MIT, arquivo `LICENSE` na raiz do repositório)
+24. [ ] Paginação e Ordenação nas Listagens (controle dinâmico de registros por página e ordenação clicável por coluna no CRUD)
+25. [ ] Exportação e Importação de Dados CSV (exportação de listagens com filtros ativos e carga em lote com validação prévia de colunas)
+26. [ ] Notificações e Alertas Visuais Flutuantes (sistema leve de *toast notifications* em Vanilla JS)
+27. [ ] Logs Avançados de Auditoria por Módulo (rastreamento detalhado de diffs antes/depois nas alterações do CRUD declarativo)
+28. [ ] Atributos Extras em Tabelas Pivô N:N (metadados adicionais como status ou papel diretamente na linha de junção)
 
 ## 41. Contribuições e Manutenção da Documentação
 
@@ -1071,7 +1083,8 @@ Mudanças arquiteturais significativas deverão ser justificadas.
 
 ## 42. Licença
 
-A licença do projeto será definida antes da primeira versão pública estável.
+Distribuído sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
 
 ## 43. Fundação implementada
 
@@ -1087,7 +1100,29 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
    ```bash
    php tests/verify.php
    ```
-   O teste roda de forma isolada em diretório temporário, validando inicialização com preflight, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos), Relacionamentos 1:N (com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`), Relacionamentos N:N com Tabelas Pivô Declarativas (`sync`, `resolve`, `reverse 360` e `cascade cleanup`) e Busca Assistida / Autocomplete (Item 20).
+   O teste roda de forma isolada em diretório temporário, validando inicialização com preflight, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos), Relacionamentos 1:N (com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`), Relacionamentos N:N com Tabelas Pivô Declarativas (`sync`, `resolve`, `reverse 360` e `cascade cleanup`), Busca Assistida / Autocomplete (Item 20), Rate Limiter com proteção de força bruta, detecção de IP do cliente, regras de proteção `.htaccess` e arquivo de licença MIT.
+
+### Checklist para Publicação em Produção (v1)
+
+Antes de disponibilizar o LPAF para os usuários finais em ambiente de produção:
+
+1. **Configuração de Ambiente (`.env`):**
+   - Definir `APP_ENV=production`;
+   - Definir `APP_DEBUG=false` para evitar exposição acidental de caminhos e dados de debug;
+   - Definir `APP_URL` com a URL canônica HTTPS (ex: `https://meusistema.com.br`);
+   - Definir `APP_SETUP_KEY` com uma senha forte e mantê-la segura para bloquear acessos indevidos à rota de instalação inicial.
+2. **Servidor Web (Apache / Nginx / LiteSpeed):**
+   - Apontar o **DocumentRoot** do servidor virtual exclusivamente para o diretório `public/` do projeto;
+   - Garantir que o módulo `mod_rewrite` esteja ativo no Apache;
+   - Assegurar que as regras de `AllowOverride All` estejam ativas para o DocumentRoot e que os arquivos `.htaccess` e `storage/.htaccess` estejam presentes e ativos.
+3. **Permissões de Diretórios do Sistema de Arquivos:**
+   - Garantir que o usuário do servidor web (ex: `www-data`, `apache`, etc.) tenha permissão de leitura e escrita (`0775` ou `0755`) no diretório `storage/` e todos os seus subdiretórios (`storage/data/`, `storage/backups/`, `storage/logs/`, `storage/tmp/`) e no diretório `modules/` (para operação do Entity Builder);
+   - Os diretórios de código-fonte (`app/`, `routes/`, `views/`) devem permanecer em modo somente-leitura para o servidor web.
+4. **HTTPS / Certificado SSL:**
+   - Instalar certificado SSL válido (ex: Let's Encrypt). O sistema habilitará automaticamente a flag `Secure` nos cookies de sessão do PHP.
+5. **Automação de Backup:**
+   - Embora o LPAF permita gerar e baixar backups via painel Dev-End, recomenda-se configurar uma rotina externa (cron job) para cópia periódica do diretório `storage/data/` para armazenamento seguro off-site.
+
 
 ### Carga de dados para testes e demonstração (Seed)
 

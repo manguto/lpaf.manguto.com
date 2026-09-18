@@ -1,6 +1,32 @@
 Options -Indexes
+
+# Bloqueio de arquivos ocultos e arquivos sensíveis de configuração e controle de versão
+<IfModule mod_authz_core.c>
+    <FilesMatch "^\.">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "(composer\.(json|lock)|package\.json|package-lock\.json|phpunit\.xml|README\.md|LICENSE)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "^\.">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <FilesMatch "(composer\.(json|lock)|package\.json|package-lock\.json|phpunit\.xml|README\.md|LICENSE)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Bloqueia acesso direto a diretórios internos da aplicação
+    RewriteRule ^(app|storage|modules|routes|views|tests|vendor)(\/|$) - [F,L,NC]
+
+    # Redireciona o tráfego para o document root público
     RewriteRule ^$ public/ [L]
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

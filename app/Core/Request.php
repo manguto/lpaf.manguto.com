@@ -30,4 +30,19 @@ final class Request
     {
         return $_POST[$key] ?? $_GET[$key] ?? $default;
     }
+    public function ip(): string
+    {
+        $ip = $_SERVER['HTTP_CF_CONNECTING_IP']
+            ?? $_SERVER['HTTP_X_FORWARDED_FOR']
+            ?? $_SERVER['REMOTE_ADDR']
+            ?? '127.0.0.1';
+
+        if (str_contains($ip, ',')) {
+            $parts = explode(',', $ip);
+            $ip = trim($parts[0]);
+        }
+
+        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '127.0.0.1';
+    }
 }
+

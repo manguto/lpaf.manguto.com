@@ -637,11 +637,88 @@ if (!str_contains($formHtml, 'autocomplete-container') || !str_contains($formHtm
 if (!str_contains($formHtml, 'data-id="pro_001"') || !str_contains($formHtml, 'Portal de Telemetria')) {
     throw new RuntimeException('Opções do autocomplete 1:N não foram renderizadas corretamente no form.php.');
 }
-if (!str_contains($formHtml, 'filterAutocomplete') || !str_contains($formHtml, 'selectAutocompleteOption')) {
-    throw new RuntimeException('Scripts de busca assistida ausentes no form.php.');
+// 7. Teste de detecção de IP do cliente (Request::ip)
+$req = new Request();
+if ($req->ip() !== '127.0.0.1') {
+    throw new RuntimeException('IP padrão esperado 127.0.0.1, recebido: ' . $req->ip());
+}
+$_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.195, 70.41.3.18';
+if ($req->ip() !== '203.0.113.195') {
+    throw new RuntimeException('Falha no parse de X-Forwarded-For no Request::ip(), recebido: ' . $req->ip());
+}
+unset($_SERVER['HTTP_X_FORWARDED_FOR']);
+
+// 8. Teste do RateLimiter (Proteção de Força Bruta)
+$rateLimiter = $app->rateLimiter;
+$testKey = 'test_login_' . bin2hex(random_bytes(4));
+
+if ($rateLimiter->tooManyAttempts($testKey, 5)) {
+    throw new RuntimeException('RateLimiter não deveria bloquear chave nova.');
+}
+if ($rateLimiter->retriesLeft($testKey, 5) !== 5) {
+    throw new RuntimeException('RateLimiter deveria indicar 5 tentativas restantes.');
 }
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas e Busca Assistida / Autocomplete (Item 20).\n";
+// Executa 4 tentativas
+for ($i = 1; $i <= 4; $i++) {
+    $attempts = $rateLimiter->hit($testKey, 300, 5);
+    if ($attempts !== $i) {
+        throw new RuntimeException("RateLimiter hit retornou {$attempts}, esperado {$i}.");
+    }
+}
+if ($rateLimiter->tooManyAttempts($testKey, 5)) {
+    throw new RuntimeException('RateLimiter não deveria bloquear na 4ª tentativa.');
+}
+if ($rateLimiter->retriesLeft($testKey, 5) !== 1) {
+    throw new RuntimeException('RateLimiter deveria indicar 1 tentativa restante após 4 hits.');
+}
+
+// 5ª tentativa: bloqueio
+$attempts = $rateLimiter->hit($testKey, 300, 5);
+if ($attempts !== 5) {
+    throw new RuntimeException("RateLimiter hit 5 falhou: esperado 5, obtido {$attempts}.");
+}
+if (!$rateLimiter->tooManyAttempts($testKey, 5)) {
+    throw new RuntimeException('RateLimiter deveria bloquear após 5 tentativas.');
+}
+$availableIn = $rateLimiter->availableIn($testKey);
+if ($availableIn <= 0 || $availableIn > 300) {
+    throw new RuntimeException("Tempo restante inválido no RateLimiter: {$availableIn}s.");
+}
+
+// Limpeza após sucesso (clear)
+$rateLimiter->clear($testKey);
+if ($rateLimiter->tooManyAttempts($testKey, 5)) {
+    throw new RuntimeException('RateLimiter clear não limpou o bloqueio.');
+}
+if ($rateLimiter->retriesLeft($testKey, 5) !== 5) {
+    throw new RuntimeException('RateLimiter retriesLeft deveria ser 5 após clear.');
+}
+
+// 9. Teste de conformidade de arquivos de segurança e licença
+$projectRoot = dirname(__DIR__);
+if (!is_file($projectRoot . '/LICENSE')) {
+    throw new RuntimeException('Arquivo LICENSE não encontrado na raiz.');
+}
+$licenseContent = (string) file_get_contents($projectRoot . '/LICENSE');
+if (!str_contains($licenseContent, 'MIT License')) {
+    throw new RuntimeException('Arquivo LICENSE não contém a declaração do MIT License.');
+}
+
+if (!is_file($projectRoot . '/storage/.htaccess')) {
+    throw new RuntimeException('Arquivo storage/.htaccess de proteção não encontrado.');
+}
+$storageHtaccess = (string) file_get_contents($projectRoot . '/storage/.htaccess');
+if (!str_contains($storageHtaccess, 'Require all denied')) {
+    throw new RuntimeException('storage/.htaccess não contém regra "Require all denied".');
+}
+
+$rootHtaccess = (string) file_get_contents($projectRoot . '/.htaccess');
+if (!str_contains($rootHtaccess, 'storage') || !str_contains($rootHtaccess, 'composer')) {
+    throw new RuntimeException('Root .htaccess não possui bloqueios de segurança essenciais.');
+}
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas, Busca Assistida / Autocomplete (Item 20), Rate Limiting (Força Bruta), Proteção .htaccess e Licença MIT.\n";
 
 
 

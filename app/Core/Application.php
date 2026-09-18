@@ -14,12 +14,14 @@ final class Application
     public RoleRepository $roles;
     public PermissionRepository $permissions;
     public ModuleManager $modules;
+    public RateLimiter $rateLimiter;
     public function __construct(public Config $config, public CsvStorage $storage, public Request $request)
     {
         $this->users = new UserRepository($storage);
         $this->roles = new RoleRepository($storage);
         $this->permissions = new PermissionRepository($storage);
         $this->modules = new ModuleManager($this);
+        $this->rateLimiter = new RateLimiter($config);
     }
     public function installed(): bool
     {
