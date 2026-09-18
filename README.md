@@ -1091,15 +1091,49 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
 
 ### Instalação e execução local
 
-1. Copie `.env.example` para `.env` e configure `APP_URL`, `APP_DEBUG` e, opcionalmente, `APP_SETUP_KEY`.
-2. Execute `composer install` na raiz do projeto para gerar o autoloader PSR-4. *(Nota: caso acesse a aplicação antes deste passo, o sistema de **Preflight** interceptará a execução e oferecerá diagnósticos e botões para auto-instalação ou autoloader de emergência diretamente no navegador ou instruções no terminal).*
-3. Inicie o servidor embutido do PHP (`php -S localhost:8000 -t public public/index.php`) ou configure o virtualhost do Apache/XAMPP para o diretório `public/`.
-4. Acesse a raiz da aplicação (ou `/setup`), crie o primeiro usuário (com perfil automático Desenvolvedor) e entre no sistema.
-5. Para rodar a suíte completa de verificação automatizada:
+1. Obtenha o código clonando o repositório ou baixando o ZIP:
+   ```bash
+   git clone https://github.com/manguto/lpaf.manguto.com.git meu-sistema
+   cd meu-sistema
+   ```
+2. Copie `.env.example` para `.env` e configure `APP_URL`, `APP_DEBUG` e, opcionalmente, `APP_SETUP_KEY`.
+3. Execute `composer install` na raiz do projeto para gerar o autoloader PSR-4. *(Nota: caso acesse a aplicação antes deste passo, o sistema de **Preflight** interceptará a execução e oferecerá diagnósticos e botões para auto-instalação ou autoloader de emergência diretamente no navegador ou instruções no terminal).*
+4. Inicie o servidor embutido do PHP (`php -S localhost:8000 -t public public/index.php`) ou configure o virtualhost do Apache/XAMPP para o diretório `public/`.
+5. Acesse a raiz da aplicação (ou `/setup`), crie o primeiro usuário (com perfil automático Desenvolvedor) e entre no sistema.
+6. Para rodar a suíte completa de verificação automatizada:
    ```bash
    php tests/verify.php
    ```
    O teste roda de forma isolada em diretório temporário, validando inicialização com preflight, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos), Relacionamentos 1:N (com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`), Relacionamentos N:N com Tabelas Pivô Declarativas (`sync`, `resolve`, `reverse 360` e `cascade cleanup`), Busca Assistida / Autocomplete (Item 20), Rate Limiter com proteção de força bruta, detecção de IP do cliente, regras de proteção `.htaccess` e arquivo de licença MIT.
+
+### Criando um novo sistema independente a partir deste projeto
+
+Quando você clona o LPAF para iniciar um novo produto/sistema, o Git local mantém a referência remota (`origin`) apontando para o repositório base `lpaf.manguto.com`. Para torná-lo um projeto 100% autônomo com seu próprio histórico e repositório:
+
+* **Opção 1 — No GitHub (Recomendado):** Se o repositório estiver configurado como modelo, utilize o botão verde **"Use this template" &rarr; "Create a new repository"**. O GitHub gerará um novo repositório limpo e desacoplado.
+* **Opção 2 — Desvinculando a pasta localmente:**
+  1. No terminal, dentro da pasta do novo sistema, remova o diretório `.git` original:
+     - **Windows PowerShell:** `Remove-Item -Recurse -Force .git`
+     - **Windows CMD:** `rmdir /s /q .git`
+     - **Linux / macOS:** `rm -rf .git`
+  2. Inicialize um novo repositório Git limpo:
+     ```bash
+     git init
+     git branch -M main
+     git add .
+     git commit -m "feat: initial commit from LPAF framework"
+     ```
+  3. Crie o novo repositório no seu GitHub/GitLab e vincule:
+     ```bash
+     git remote add origin https://github.com/seu-usuario/meu-novo-sistema.git
+     git push -u origin main
+     ```
+* **Opção 3 — Redirecionando o repositório remoto (mantendo histórico de commits):**
+  Caso prefira manter o histórico original de desenvolvimento do LPAF no novo projeto, apenas troque a URL remota:
+  ```bash
+  git remote set-url origin https://github.com/seu-usuario/meu-novo-sistema.git
+  git push -u origin master
+  ```
 
 ### Checklist para Publicação em Produção (v1)
 
