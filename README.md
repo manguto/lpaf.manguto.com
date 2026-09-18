@@ -394,7 +394,7 @@ O sistema conta com um motor completo de **Relacionamentos 1:N (Chaves Estrangei
 * **Seleção Visual no Entity Builder:** Ao configurar ou editar uma entidade no Dev-End, o tipo `Relação 1:N` permite vincular o campo a qualquer outro módulo existente através de menu seletor inteligente;
 * **Formulários Dinâmicos com Busca Assistida (Autocomplete):** As telas de criação e edição renderizam um componente leve e acessível de busca assistida em tempo real (Vanilla JS), permitindo digitar para filtrar registros instantaneamente por rótulo ou código identificador, com navegação fluida por teclado (Setas e Enter), botão de limpeza rápida (`✕`) e mensagem clara para consultas sem correspondência;
 * **Exibição nas Listagens e Detalhes:** As tabelas de listagem (`/app/{slug}`) e detalhes (`show`) substituem os códigos brutos pelos nomes dos registros vinculados, com links diretos para a entidade relacionada;
-* **Sub-listagem Reversa na Visualização do Pai (Visão 360°):** Na visualização de um registro pai (`/app/<pai>/<id>`), o sistema descobre e renderiza automaticamente tabelas com todos os registros filhos vinculados (ex.: contratos do cliente, equipamentos do cliente), além de botão de atalho para cadastrar novos filhos já pré-vinculados;
+* **Sub-listagem Reversa na Visualização do Pai (Visão 360°):** Na visualização de um registro pai (`/app/<pai>/<id>`), o sistema descobre e renderiza automaticamente tabelas com todos os registros filhos vinculados (ex.: pedidos do cliente, avaliações do produto), além de botão de atalho para cadastrar novos filhos já pré-vinculados;
 * **Filtros Rápidos por Relação na Listagem (`index.php`):** A barra superior de pesquisa identifica campos relacionais e renderiza dinamicamente seletores `<select>` para filtragem imediata em 1 clique (com envio automático `onchange`), combinável com pesquisa textual, atalhos contextuais diretos (`🔍`) nas linhas da tabela e botão para limpar filtros;
 * **Integridade Referencial Dupla:**
   - *No Salvamento:* Validação estrita impedindo o envio de chaves estrangeiras inexistentes;
@@ -404,7 +404,7 @@ O sistema conta com um motor completo de **Relacionamentos 1:N (Chaves Estrangei
 
 O sistema conta com suporte completo a **Relacionamentos N:N (Muitos para Muitos)** desacoplados e baseados em tabelas de junção (*pivot tables*):
 
-* **Tabelas Pivô Dedicadas em CSV:** As associações são armazenadas exclusivamente em arquivos CSV intermediários (ex: `projeto_equipamentos.csv` ou padrão `{pai}_{destino}.csv`), estruturados com `id`, `created_at`, `{parent_key}` e `{target_key}`, mantendo os CSVs principais das entidades limpos e sem quebra da primeira forma normal;
+* **Tabelas Pivô Dedicadas em CSV:** As associações são armazenadas exclusivamente em arquivos CSV intermediários (ex: `produto_tags.csv` ou padrão `{pai}_{destino}.csv`), estruturados com `id`, `created_at`, `{parent_key}` e `{target_key}`, mantendo os CSVs principais das entidades limpos e sem quebra da primeira forma normal;
 * **Configuração Declarativa em `module.php`:** Definição simples via tipo `many_to_many`, indicando o módulo de destino (`target`), campo descritivo (`display`), arquivo pivô opcional (`pivot_file`), e chaves (`parent_key`, `target_key`);
 * **Seleção Visual no Entity Builder:** O Dev-End permite selecionar o tipo `Relação N:N` e indicar o módulo relacionado, com a tabela pivô intermediária sendo gerenciada de forma transparente e automática por convenção do framework (`{pai}_{destino}.csv`);
 * **Interface de Associação Confortável com Busca em Tempo Real (`form.php`):** Formulários de cadastro e edição renderizam um painel contrastado de cartões/checkboxes com filtro de pesquisa instantâneo via JavaScript, feedback dinâmico de ausência de registros e botões "Marcar Todos / Desmarcar Todos";
@@ -659,18 +659,17 @@ Exemplo conceitual de definição:
 
 ```php
 return [
-    'entity' => 'Equipment',
-    'slug' => 'equipamentos',
+    'entity' => 'Produto',
+    'slug' => 'produtos',
 
     'fields' => [
-        'patrimonio' => [
-            'type' => 'string',
-            'required' => true,
-            'unique' => true,
-        ],
-
         'nome' => [
             'type' => 'string',
+            'required' => true,
+        ],
+
+        'preco' => [
+            'type' => 'number',
             'required' => true,
         ],
 
@@ -716,7 +715,7 @@ Estrutura implementada:
 
 ```text
 modules/
-├── equipamentos/
+├── produtos/
 │   └── module.php
 │
 └── ...
@@ -1142,14 +1141,14 @@ php scripts/seed.php
 | **Usuária Padrão** | `mariana` | `user123456` | `role_user` | Acesso operacional padrão para testes simultâneos |
 | **Desativado** | `inativo` | `user123456` | `role_user` | Validação de bloqueio de autenticação (`active = 0`) |
 
-#### Módulos e dados populados
+#### Módulos e dados populados (Catálogo & Gestão Comercial)
 
-* **Clientes (6 registros)**: Empresas com múltiplos status (`Ativo`, `Prospect`, `Em Implantação`, `Inativo`), incluindo clientes com múltiplos projetos e clientes sem projetos (para testar exclusão livre).
-* **Projetos (8 registros)**: Vinculados a Clientes via chave estrangeira com política `on_delete = restrict`. Permite testar proteção contra exclusão do pai e visão 360° reversa.
-* **Tarefas (12 registros)**: Vinculadas a Projetos com política `on_delete = cascade`, múltiplos status (`A Fazer`, `Em Andamento`, `Concluído`, `Cancelado`), prioridades e prazos variados.
-* **Equipamentos (8 registros)**: Notebooks, Desktops, Servidores, Switches e Impressoras com tombo/patrimônio, fabricantes e status ativo/inativo.
-* **Manutenções (8 registros)**: Ordens de serviço preventivas, corretivas e de upgrade vinculadas aos equipamentos com custos em R$, técnicos responsáveis e descrições detalhadas.
-* **Tabela Pivô N:N Projetos <-> Equipamentos (10 registros)**: Arquivo `storage/data/projeto_equipamentos.csv` demonstrando associações compartilhadas de notebooks, servidores e switches entre múltiplos projetos corporativos.
-* **Auditoria (10 registros)**: Eventos de auditoria em `storage/logs/audit_log.csv` simulando histórico operacional.
+* **Clientes (6 registros)**: Compradores com múltiplos status (`Ativo`, `Potencial (Lead)`, `Inativo`), cidades variadas, incluindo cliente sem pedidos para testar exclusão livre.
+* **Produtos (8 registros)**: Catálogo com smartphones, notebooks, fones de ouvido, livros, cadeiras ergonômicas, monitores e acessórios com preços, estoque e status ativo/inativo.
+* **Etiquetas / Tags (5 registros)**: Marcadores transversais (`Lançamento`, `Mais Vendido`, `Super Oferta`, `Frete Grátis`, `Edição Limitada`) com cores temáticas.
+* **Tabela Pivô N:N Produtos <-> Etiquetas (12 registros)**: Arquivo `storage/data/produto_tags.csv` demonstrando produtos vinculados a múltiplas etiquetas simultaneamente (ex: Smartphone Ultra associado a *Lançamento*, *Mais Vendido* e *Frete Grátis*).
+* **Pedidos (6 registros)**: Vendas vinculadas a Clientes e Produtos com política `on_delete = restrict`, valores totais, quantidades e múltiplos status (`Pendente`, `Aprovado`, `Em Transporte`, `Entregue`). Permite testar proteção ativa contra exclusão de clientes ou produtos com pedidos existentes.
+* **Avaliações (5 registros)**: Depoimentos e notas de 1 a 5 estrelas vinculados a Produtos e Clientes com política `on_delete = cascade`. Permite testar exclusão automática em cascata caso um produto seja removido.
+* **Auditoria (9 registros)**: Eventos de auditoria em `storage/logs/audit_log.csv` simulando histórico operacional.
 * **Backups**: Snapshot inicial funcional em `storage/backups/` para teste imediato de download e restauração no Dev-End.
 

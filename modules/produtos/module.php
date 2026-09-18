@@ -1,0 +1,81 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'name' => 'Produtos',
+    'entity' => 'Produto',
+    'slug' => 'produtos',
+    'icon' => '📦',
+    'description' => 'Catálogo de produtos, precificação e controle de estoque.',
+    'prefix' => 'prd',
+    'storage' => 'produtos.csv',
+    'permission_prefix' => 'produtos',
+    'fields' => [
+        'nome' => [
+            'label' => 'Nome do Produto',
+            'type' => 'string',
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+            'help' => 'Título comercial do produto.',
+        ],
+        'categoria' => [
+            'label' => 'Categoria',
+            'type' => 'select',
+            'options' => [
+                'Eletrônicos & Smartphones',
+                'Informática & Escritório',
+                'Livros & Cursos',
+                'Acessórios & Wearables',
+                'Casa & Conforto',
+            ],
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+        ],
+        'preco' => [
+            'label' => 'Preço (R$)',
+            'type' => 'number',
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+            'help' => 'Preço de venda unitário.',
+        ],
+        'estoque' => [
+            'label' => 'Estoque Disponível',
+            'type' => 'number',
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+            'help' => 'Quantidade de unidades físicas no depósito.',
+        ],
+        'ativo' => [
+            'label' => 'Disponível para Venda',
+            'type' => 'boolean',
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+            'help' => 'Marque para disponibilizar este produto no catálogo.',
+        ],
+        'tags' => [
+            'label' => 'Etiquetas / Marcadores',
+            'type' => 'many_to_many',
+            'target' => 'tags',
+            'display' => 'nome',
+            'pivot_file' => 'produto_tags.csv',
+            'required' => false,
+            'unique' => false,
+            'list' => true,
+            'help' => 'Associe uma ou mais etiquetas promocionais ou temáticas.',
+        ],
+        'descricao' => [
+            'label' => 'Descrição Detalhada',
+            'type' => 'text',
+            'required' => false,
+            'unique' => false,
+            'list' => false,
+            'help' => 'Ficha técnica, diferenciais e informações ao consumidor.',
+        ],
+    ],
+];

@@ -87,46 +87,45 @@ $profileLogs = $auditService->all('profile_updated');
 if (empty($profileLogs)) throw new RuntimeException('Log de auditoria profile_updated não registrado.');
 
 // Teste do Motor de Módulos e CRUD Declarativo
-$modulesDir = $root . '/modules/equipamentos';
+$modulesDir = $root . '/modules/produtos';
 mkdir($modulesDir, 0775, true);
-copy(dirname(__DIR__) . '/modules/equipamentos/module.php', $modulesDir . '/module.php');
+copy(dirname(__DIR__) . '/modules/produtos/module.php', $modulesDir . '/module.php');
 
 $moduleManager = new \App\Core\ModuleManager($app);
 $modules = $moduleManager->all();
-if (!isset($modules['equipamentos'])) throw new RuntimeException('Módulo equipamentos não descoberto pelo ModuleManager.');
+if (!isset($modules['produtos'])) throw new RuntimeException('Módulo produtos não descoberto pelo ModuleManager.');
 
 $moduleManager->ensurePermissions();
 $permissions = $app->permissions->all();
 $permIds = array_column($permissions, 'id');
-if (!in_array('equipamentos.view', $permIds, true)) throw new RuntimeException('Permissão equipamentos.view não registrada automaticamente.');
-if (!in_array('equipamentos.create', $permIds, true)) throw new RuntimeException('Permissão equipamentos.create não registrada automaticamente.');
+if (!in_array('produtos.view', $permIds, true)) throw new RuntimeException('Permissão produtos.view não registrada automaticamente.');
+if (!in_array('produtos.create', $permIds, true)) throw new RuntimeException('Permissão produtos.create não registrada automaticamente.');
 
-$repo = $moduleManager->repository('equipamentos');
-if (!$repo) throw new RuntimeException('GenericRepository para equipamentos não foi instanciado.');
+$repo = $moduleManager->repository('produtos');
+if (!$repo) throw new RuntimeException('GenericRepository para produtos não foi instanciado.');
 
-$newEqp = $repo->insert([
+$newPrd = $repo->insert([
     'id' => $repo->nextId(),
-    'patrimonio' => 'PAT-001',
-    'nome' => 'Notebook Dell Latitude',
-    'categoria' => 'Notebook',
-    'fabricante' => 'Dell',
-    'modelo' => '5420',
+    'nome' => 'Smartphone Galaxy Ultra 5G',
+    'categoria' => 'Eletrônicos & Smartphones',
+    'preco' => '3499.00',
+    'estoque' => '45',
     'ativo' => '1',
-    'observacoes' => 'Equipamento de TI para testes',
+    'descricao' => 'Aparelho de teste',
     'created_at' => date('c'),
     'updated_at' => date('c'),
 ]);
 
-if ($newEqp['id'] !== 'eqp_001') throw new RuntimeException('ID do equipamento não gerou prefixo esperado eqp_001, obtido: ' . $newEqp['id']);
-if ($repo->count() !== 1) throw new RuntimeException('Contagem de equipamentos inválida.');
+if ($newPrd['id'] !== 'prd_001') throw new RuntimeException('ID do produto não gerou prefixo esperado prd_001, obtido: ' . $newPrd['id']);
+if ($repo->count() !== 1) throw new RuntimeException('Contagem de produtos inválida.');
 
-$foundEqp = $repo->findBy('patrimonio', 'PAT-001');
-if (!$foundEqp || $foundEqp['nome'] !== 'Notebook Dell Latitude') throw new RuntimeException('Falha no findBy do GenericRepository.');
+$foundPrd = $repo->findBy('nome', 'Smartphone Galaxy Ultra 5G');
+if (!$foundPrd || $foundPrd['categoria'] !== 'Eletrônicos & Smartphones') throw new RuntimeException('Falha no findBy do GenericRepository.');
 
-$repo->update('eqp_001', ['nome' => 'Notebook Dell Atualizado']);
-if ($repo->find('eqp_001')['nome'] !== 'Notebook Dell Atualizado') throw new RuntimeException('Falha no update do GenericRepository.');
+$repo->update('prd_001', ['nome' => 'Smartphone Galaxy Atualizado']);
+if ($repo->find('prd_001')['nome'] !== 'Smartphone Galaxy Atualizado') throw new RuntimeException('Falha no update do GenericRepository.');
 
-$deleted = $repo->delete('eqp_001');
+$deleted = $repo->delete('prd_001');
 if (!$deleted || $repo->count() !== 0) throw new RuntimeException('Falha no delete do GenericRepository.');
 
 // Teste do Entity Builder (Criação de Entidade)

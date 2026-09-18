@@ -1,0 +1,75 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'name' => 'Avaliações',
+    'entity' => 'Avaliação',
+    'slug' => 'avaliacoes',
+    'icon' => '⭐',
+    'description' => 'Avaliações, notas e depoimentos dos clientes sobre os produtos.',
+    'prefix' => 'avl',
+    'storage' => 'avaliacoes.csv',
+    'permission_prefix' => 'avaliacoes',
+    'fields' => [
+        'produto_id' => [
+            'label' => 'Produto',
+            'type' => 'relation',
+            'target' => 'produtos',
+            'display' => 'nome',
+            'on_delete' => 'cascade',
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+            'help' => 'Produto avaliado pelo comprador.',
+        ],
+        'cliente_id' => [
+            'label' => 'Cliente',
+            'type' => 'relation',
+            'target' => 'clientes',
+            'display' => 'nome',
+            'on_delete' => 'cascade',
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+            'help' => 'Cliente autor da avaliação.',
+        ],
+        'nota' => [
+            'label' => 'Classificação',
+            'type' => 'select',
+            'options' => [
+                '⭐⭐⭐⭐⭐ 5 Estrelas (Excelente)',
+                '⭐⭐⭐⭐ 4 Estrelas (Muito Bom)',
+                '⭐⭐⭐ 3 Estrelas (Bom)',
+                '⭐⭐ 2 Estrelas (Regular)',
+                '⭐ 1 Estrela (Ruim)',
+            ],
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+        ],
+        'titulo' => [
+            'label' => 'Título do Depoimento',
+            'type' => 'string',
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+            'help' => 'Resumo breve da opinião do cliente.',
+        ],
+        'comentario' => [
+            'label' => 'Comentário Completo',
+            'type' => 'text',
+            'required' => true,
+            'unique' => false,
+            'list' => false,
+            'help' => 'Opinião sincera e experiência de uso do produto.',
+        ],
+        'data' => [
+            'label' => 'Data da Avaliação',
+            'type' => 'date',
+            'required' => true,
+            'unique' => false,
+            'list' => true,
+        ],
+    ],
+];

@@ -5,13 +5,14 @@ declare(strict_types=1);
 /**
  * Seeder do LPAF - População de Banco de Dados (CSV) para Demonstração e Testes
  * 
- * Executa a carga de dados realistas e conectados para todos os módulos e RBAC:
- * - Usuários e Perfis (Desenvolvedor, Administrador, Usuário comum, Inativo)
- * - Clientes (com múltiplos status)
- * - Projetos (vinculados a Clientes via on_delete = restrict)
- * - Tarefas (vinculadas a Projetos via on_delete = cascade)
- * - Equipamentos (TI, infraestrutura, status ativo/inativo)
- * - Manutenções (vinculadas a Equipamentos com histórico e custos)
+ * Executa a carga de dados realistas e conectados para o domínio intuitivo de E-commerce / Vendas:
+ * - Usuários e RBAC (Desenvolvedor, Administrador, Usuário comum, Inativo)
+ * - Clientes (compradores em múltiplos status)
+ * - Etiquetas / Tags (marcadores promocionais transversais)
+ * - Produtos (catálogo de produtos e controle de estoque)
+ * - Tabela Pivô N:N Produtos <-> Etiquetas (produto_tags.csv)
+ * - Pedidos (vendas com integridade referencial 1:N restritiva para Clientes e Produtos)
+ * - Avaliações (depoimentos com estrelas e exclusão em cascata)
  * - Logs de Auditoria Realistas
  * - Snapshot de Backup de Demonstração
  * 
@@ -44,9 +45,8 @@ $lastMonth = date('c', strtotime('-30 days'));
 // -----------------------------------------------------------------------------
 // 1. USUÁRIOS E RBAC
 // -----------------------------------------------------------------------------
-echo "[1/7] Populando Usuários e Perfis de Acesso...\n";
+echo "[1/8] Populando Usuários e Perfis de Acesso...\n";
 
-// Preserva o hash existente de usr_001 (dev) se já existir para não quebrar login atual
 $existingDev = null;
 if ($storage->exists('users.csv')) {
     foreach ($storage->read('users.csv') as $u) {
@@ -100,15 +100,53 @@ $users = [
     ],
     [
         'id' => 'usr_005',
-        'name' => 'Roberto Inativo',
+        'name' => 'Usuário Inativo (Teste)',
         'username' => 'inativo',
         'password_hash' => $userHash,
         'active' => '0',
         'created_at' => $lastMonth,
-        'updated_at' => $yesterday,
+        'updated_at' => $lastWeek,
     ],
 ];
 $storage->write('users.csv', ['id', 'name', 'username', 'password_hash', 'active', 'created_at', 'updated_at'], $users);
+
+$roles = [
+    ['id' => 'role_dev', 'name' => 'Desenvolvedor', 'description' => 'Acesso irrestrito a configurações, motor de módulos, logs e backups.'],
+    ['id' => 'role_admin', 'name' => 'Administrador', 'description' => 'Gestão de usuários, perfis e operações completas em todos os módulos.'],
+    ['id' => 'role_user', 'name' => 'Usuário Padrão', 'description' => 'Acesso operacional aos módulos permitidos de catálogo e pedidos.'],
+];
+$storage->write('roles.csv', ['id', 'name', 'description'], $roles);
+
+$permissions = [
+    ['id' => 'users.manage', 'name' => 'Gerenciar Usuários'],
+    ['id' => 'roles.manage', 'name' => 'Gerenciar Papéis'],
+    ['id' => 'dev.diagnostics', 'name' => 'Acessar Diagnósticos Técnicos'],
+    ['id' => 'dev.backups', 'name' => 'Acessar e Gerenciar Backups'],
+    ['id' => 'dev.logs', 'name' => 'Visualizar Logs de Auditoria'],
+    ['id' => 'dev.modules', 'name' => 'Gerenciar Módulos e Entidades'],
+    // Módulos
+    ['id' => 'clientes.view', 'name' => 'Visualizar Clientes'],
+    ['id' => 'clientes.create', 'name' => 'Cadastrar Clientes'],
+    ['id' => 'clientes.edit', 'name' => 'Editar Clientes'],
+    ['id' => 'clientes.delete', 'name' => 'Excluir Clientes'],
+    ['id' => 'produtos.view', 'name' => 'Visualizar Produtos'],
+    ['id' => 'produtos.create', 'name' => 'Cadastrar Produtos'],
+    ['id' => 'produtos.edit', 'name' => 'Editar Produtos'],
+    ['id' => 'produtos.delete', 'name' => 'Excluir Produtos'],
+    ['id' => 'tags.view', 'name' => 'Visualizar Etiquetas'],
+    ['id' => 'tags.create', 'name' => 'Cadastrar Etiquetas'],
+    ['id' => 'tags.edit', 'name' => 'Editar Etiquetas'],
+    ['id' => 'tags.delete', 'name' => 'Excluir Etiquetas'],
+    ['id' => 'pedidos.view', 'name' => 'Visualizar Pedidos'],
+    ['id' => 'pedidos.create', 'name' => 'Cadastrar Pedidos'],
+    ['id' => 'pedidos.edit', 'name' => 'Editar Pedidos'],
+    ['id' => 'pedidos.delete', 'name' => 'Excluir Pedidos'],
+    ['id' => 'avaliacoes.view', 'name' => 'Visualizar Avaliações'],
+    ['id' => 'avaliacoes.create', 'name' => 'Cadastrar Avaliações'],
+    ['id' => 'avaliacoes.edit', 'name' => 'Editar Avaliações'],
+    ['id' => 'avaliacoes.delete', 'name' => 'Excluir Avaliações'],
+];
+$storage->write('permissions.csv', ['id', 'name'], $permissions);
 
 $userRoles = [
     ['user_id' => 'usr_001', 'role_id' => 'role_dev'],
@@ -119,659 +157,461 @@ $userRoles = [
 ];
 $storage->write('user_roles.csv', ['user_id', 'role_id'], $userRoles);
 
-// Atualiza role_permissions para permitir visualização aos usuários comuns (para testes de RBAC)
 $rolePermissions = [
-    ['role_id' => 'role_dev', 'permission_id' => '*'],
-    // role_admin: permissões administrativas completas
-    ['role_id' => 'role_admin', 'permission_id' => 'dashboard.view'],
-    ['role_id' => 'role_admin', 'permission_id' => 'profile.edit'],
-    ['role_id' => 'role_admin', 'permission_id' => 'users.view'],
-    ['role_id' => 'role_admin', 'permission_id' => 'users.create'],
-    ['role_id' => 'role_admin', 'permission_id' => 'users.edit'],
+    // Administrador tem gestão total dos dados
     ['role_id' => 'role_admin', 'permission_id' => 'users.manage'],
-    ['role_id' => 'role_admin', 'permission_id' => 'roles.view'],
-    ['role_id' => 'role_admin', 'permission_id' => 'roles.create'],
-    ['role_id' => 'role_admin', 'permission_id' => 'roles.edit'],
     ['role_id' => 'role_admin', 'permission_id' => 'roles.manage'],
-    ['role_id' => 'role_admin', 'permission_id' => 'audit.view'],
     ['role_id' => 'role_admin', 'permission_id' => 'clientes.view'],
     ['role_id' => 'role_admin', 'permission_id' => 'clientes.create'],
     ['role_id' => 'role_admin', 'permission_id' => 'clientes.edit'],
     ['role_id' => 'role_admin', 'permission_id' => 'clientes.delete'],
-    ['role_id' => 'role_admin', 'permission_id' => 'equipamentos.view'],
-    ['role_id' => 'role_admin', 'permission_id' => 'equipamentos.create'],
-    ['role_id' => 'role_admin', 'permission_id' => 'equipamentos.edit'],
-    ['role_id' => 'role_admin', 'permission_id' => 'equipamentos.delete'],
-    ['role_id' => 'role_admin', 'permission_id' => 'manutencoes.view'],
-    ['role_id' => 'role_admin', 'permission_id' => 'manutencoes.create'],
-    ['role_id' => 'role_admin', 'permission_id' => 'manutencoes.edit'],
-    ['role_id' => 'role_admin', 'permission_id' => 'manutencoes.delete'],
-    ['role_id' => 'role_admin', 'permission_id' => 'projetos.view'],
-    ['role_id' => 'role_admin', 'permission_id' => 'projetos.create'],
-    ['role_id' => 'role_admin', 'permission_id' => 'projetos.edit'],
-    ['role_id' => 'role_admin', 'permission_id' => 'projetos.delete'],
-    ['role_id' => 'role_admin', 'permission_id' => 'tarefas.view'],
-    ['role_id' => 'role_admin', 'permission_id' => 'tarefas.create'],
-    ['role_id' => 'role_admin', 'permission_id' => 'tarefas.edit'],
-    ['role_id' => 'role_admin', 'permission_id' => 'tarefas.delete'],
-    // role_user: permissões de visualização e perfil (leitura)
-    ['role_id' => 'role_user', 'permission_id' => 'dashboard.view'],
-    ['role_id' => 'role_user', 'permission_id' => 'profile.edit'],
+    ['role_id' => 'role_admin', 'permission_id' => 'produtos.view'],
+    ['role_id' => 'role_admin', 'permission_id' => 'produtos.create'],
+    ['role_id' => 'role_admin', 'permission_id' => 'produtos.edit'],
+    ['role_id' => 'role_admin', 'permission_id' => 'produtos.delete'],
+    ['role_id' => 'role_admin', 'permission_id' => 'tags.view'],
+    ['role_id' => 'role_admin', 'permission_id' => 'tags.create'],
+    ['role_id' => 'role_admin', 'permission_id' => 'tags.edit'],
+    ['role_id' => 'role_admin', 'permission_id' => 'tags.delete'],
+    ['role_id' => 'role_admin', 'permission_id' => 'pedidos.view'],
+    ['role_id' => 'role_admin', 'permission_id' => 'pedidos.create'],
+    ['role_id' => 'role_admin', 'permission_id' => 'pedidos.edit'],
+    ['role_id' => 'role_admin', 'permission_id' => 'pedidos.delete'],
+    ['role_id' => 'role_admin', 'permission_id' => 'avaliacoes.view'],
+    ['role_id' => 'role_admin', 'permission_id' => 'avaliacoes.create'],
+    ['role_id' => 'role_admin', 'permission_id' => 'avaliacoes.edit'],
+    ['role_id' => 'role_admin', 'permission_id' => 'avaliacoes.delete'],
+
+    // Usuário Comum tem visualização e criação de pedidos/avaliações
     ['role_id' => 'role_user', 'permission_id' => 'clientes.view'],
-    ['role_id' => 'role_user', 'permission_id' => 'projetos.view'],
-    ['role_id' => 'role_user', 'permission_id' => 'tarefas.view'],
-    ['role_id' => 'role_user', 'permission_id' => 'equipamentos.view'],
-    ['role_id' => 'role_user', 'permission_id' => 'manutencoes.view'],
+    ['role_id' => 'role_user', 'permission_id' => 'produtos.view'],
+    ['role_id' => 'role_user', 'permission_id' => 'tags.view'],
+    ['role_id' => 'role_user', 'permission_id' => 'pedidos.view'],
+    ['role_id' => 'role_user', 'permission_id' => 'pedidos.create'],
+    ['role_id' => 'role_user', 'permission_id' => 'avaliacoes.view'],
+    ['role_id' => 'role_user', 'permission_id' => 'avaliacoes.create'],
 ];
 $storage->write('role_permissions.csv', ['role_id', 'permission_id'], $rolePermissions);
 
+$settings = [
+    ['key' => 'installed', 'value' => '1'],
+    ['key' => 'app_name', 'value' => 'LPAF - Catálogo & Gestão Comercial'],
+    ['key' => 'app_theme', 'value' => 'dark'],
+];
+$storage->write('settings.csv', ['key', 'value'], $settings);
+
 // -----------------------------------------------------------------------------
-// 2. CLIENTES (clientes.csv)
+// 2. CLIENTES
 // -----------------------------------------------------------------------------
-echo "[2/7] Populando Módulo: Clientes (6 registros)...\n";
-$clientesHeaders = ['id', 'created_at', 'updated_at', 'razao_social', 'nome_fantasia', 'cnpj', 'cidade', 'status', 'observacoes'];
+echo "[2/8] Populando Clientes (Compradores)...\n";
 $clientes = [
     [
         'id' => 'cli_001',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'razao_social' => 'TechLog Logística e Transportes S/A',
-        'nome_fantasia' => 'TechLog Brasil',
-        'cnpj' => '12.345.678/0001-90',
-        'cidade' => 'Campinas / SP',
+        'nome' => 'Ana Paula Silva',
+        'email' => 'ana.silva@techmail.com',
+        'telefone' => '(11) 98765-4321',
+        'cidade' => 'São Paulo / SP',
         'status' => 'Ativo',
-        'observacoes' => 'Contrato Enterprise de monitoramento de frotas e telemetria em tempo real.',
+        'observacoes' => 'Cliente assídua, prefere entregas no período da tarde.',
+        'created_at' => $lastMonth,
+        'updated_at' => $now,
     ],
     [
         'id' => 'cli_002',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastWeek,
-        'razao_social' => 'Hospital Santa Clara Assistência Médica Ltda',
-        'nome_fantasia' => 'Hospital Santa Clara',
-        'cnpj' => '98.765.432/0001-10',
-        'cidade' => 'São Paulo / SP',
+        'nome' => 'Bruno Mendes Costa',
+        'email' => 'bruno.mendes@corporativo.com',
+        'telefone' => '(21) 99876-5432',
+        'cidade' => 'Rio de Janeiro / RJ',
         'status' => 'Ativo',
-        'observacoes' => 'Ambiente hospitalar com alta criticidade, telemedicina e conformidade com a LGPD.',
+        'observacoes' => 'Compras corporativas para equipe de tecnologia.',
+        'created_at' => $lastMonth,
+        'updated_at' => $now,
     ],
     [
         'id' => 'cli_003',
+        'nome' => 'Camila Rodrigues',
+        'email' => 'camila.rodrigues@designstudio.com',
+        'telefone' => '(31) 98877-6655',
+        'cidade' => 'Belo Horizonte / MG',
+        'status' => 'Ativo',
+        'observacoes' => 'Profissional autônoma, adquire equipamentos de alta fidelidade visual.',
         'created_at' => $lastWeek,
-        'updated_at' => $lastWeek,
-        'razao_social' => 'Varejo Global Comércio e Distribuição S/A',
-        'nome_fantasia' => 'Global Express',
-        'cnpj' => '45.678.901/0001-23',
-        'cidade' => 'Rio de Janeiro / RJ',
-        'status' => 'Em Implantação',
-        'observacoes' => 'Plataforma e-commerce e centro de distribuição automatizado.',
+        'updated_at' => $now,
     ],
     [
         'id' => 'cli_004',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'razao_social' => 'Instituto Alfa de Inovação e Educação',
-        'nome_fantasia' => 'Instituto Alfa',
-        'cnpj' => '33.444.555/0001-67',
+        'nome' => 'Diego Fernandez',
+        'email' => 'diego.fernandez@sultech.com.br',
+        'telefone' => '(41) 97766-5544',
         'cidade' => 'Curitiba / PR',
-        'status' => 'Ativo',
-        'observacoes' => 'Portal de cursos, ambiente virtual de aprendizado e pesquisa aplicada.',
+        'status' => 'Potencial (Lead)',
+        'observacoes' => 'Interessado em pedidos por atacado de monitores e teclados.',
+        'created_at' => $yesterday,
+        'updated_at' => $now,
     ],
     [
         'id' => 'cli_005',
-        'created_at' => $lastWeek,
-        'updated_at' => $yesterday,
-        'razao_social' => 'Prisma Soluções Financeiras e Meios de Pagamento',
-        'nome_fantasia' => 'Prisma Fintech',
-        'cnpj' => '77.888.999/0001-44',
-        'cidade' => 'Belo Horizonte / MG',
-        'status' => 'Prospect',
-        'observacoes' => 'Em processo de homologação regulatória e testes de segurança bancária.',
+        'nome' => 'Juliana Albuquerque',
+        'email' => 'juliana.albuquerque@inovacao.org',
+        'telefone' => '(51) 99988-7766',
+        'cidade' => 'Porto Alegre / RS',
+        'status' => 'Inativo',
+        'observacoes' => 'Cadastro suspenso temporariamente a pedido da cliente.',
+        'created_at' => $lastMonth,
+        'updated_at' => $lastWeek,
     ],
     [
         'id' => 'cli_006',
-        'created_at' => $lastMonth,
-        'updated_at' => $yesterday,
-        'razao_social' => 'Prime Consultoria Estratégica Ltda',
-        'nome_fantasia' => 'Prime Consultoria',
-        'cnpj' => '55.666.777/0001-88',
-        'cidade' => 'Porto Alegre / RS',
-        'status' => 'Inativo',
-        'observacoes' => 'Conta inativa sem projetos vinculados (ideal para testar exclusão direta permitida).',
+        'nome' => 'Eduardo Lima',
+        'email' => 'eduardo.lima@nordeste.com',
+        'telefone' => '(71) 99123-4567',
+        'cidade' => 'Salvador / BA',
+        'status' => 'Ativo',
+        'observacoes' => 'Novo cadastro sem pedidos realizados ainda (ideal para testar exclusão livre).',
+        'created_at' => $now,
+        'updated_at' => $now,
     ],
 ];
-$storage->write('clientes.csv', $clientesHeaders, $clientes);
+$storage->write('clientes.csv', ['id', 'nome', 'email', 'telefone', 'cidade', 'status', 'observacoes', 'created_at', 'updated_at'], $clientes);
 
 // -----------------------------------------------------------------------------
-// 3. PROJETOS (projetos.csv)
+// 3. ETIQUETAS / TAGS
 // -----------------------------------------------------------------------------
-echo "[3/7] Populando Módulo: Projetos (8 registros vinculados a Clientes)...\n";
-$projetosHeaders = ['id', 'created_at', 'updated_at', 'nome', 'cliente_id', 'natureza', 'prioridade', 'descricao', 'observacoes', 'ativo'];
-$projetos = [
+echo "[3/8] Populando Etiquetas / Tags...\n";
+$tags = [
     [
-        'id' => 'pro_001',
+        'id' => 'tag_001',
+        'nome' => 'Lançamento',
+        'cor' => 'Azul (Destaque)',
+        'descricao' => 'Produtos adicionados recentemente ao catálogo oficial.',
         'created_at' => $lastMonth,
-        'updated_at' => $lastWeek,
-        'nome' => 'Portal de Telemetria e Rastreamento em Tempo Real',
-        'cliente_id' => 'cli_001',
-        'natureza' => 'Desenvolvimento',
-        'prioridade' => 'Alta',
-        'descricao' => 'Desenvolvimento da suíte web e mobile de telemetria veicular com localização GPS via WebSockets.',
-        'observacoes' => 'Fase 2 de expansão de funcionalidades.',
-        'ativo' => '1',
+        'updated_at' => $now,
     ],
     [
-        'id' => 'pro_002',
+        'id' => 'tag_002',
+        'nome' => 'Mais Vendido',
+        'cor' => 'Verde (Sucesso / Frete Grátis)',
+        'descricao' => 'Itens campeões de procura e preferência dos clientes.',
         'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'nome' => 'Migração de Servidores para Nuvem Privada',
-        'cliente_id' => 'cli_001',
-        'natureza' => 'Infraestrutura',
-        'prioridade' => 'Média',
-        'descricao' => 'Modernização do parque computacional local para cluster em datacenter certificado Tier III.',
-        'observacoes' => 'Janela de manutenção concluída.',
-        'ativo' => '1',
+        'updated_at' => $now,
     ],
     [
-        'id' => 'pro_003',
-        'created_at' => $lastMonth,
-        'updated_at' => $yesterday,
-        'nome' => 'Modernização do Prontuário Clínico Eletrônico',
-        'cliente_id' => 'cli_002',
-        'natureza' => 'Desenvolvimento',
-        'prioridade' => 'Alta',
-        'descricao' => 'Refatoração da arquitetura de registros médicos, laudos laboratoriais e integração de prescrição.',
-        'observacoes' => 'Exige conformidade rígida com LGPD e auditoria médica.',
-        'ativo' => '1',
-    ],
-    [
-        'id' => 'pro_004',
-        'created_at' => $lastWeek,
-        'updated_at' => $lastWeek,
-        'nome' => 'Auditoria e Avaliação de Vulnerabilidades (Pentest)',
-        'cliente_id' => 'cli_002',
-        'natureza' => 'Suporte',
-        'prioridade' => 'Alta',
-        'descricao' => 'Auditoria preventiva externa e interna contra ameaças cibernéticas nas redes clínicas.',
-        'observacoes' => 'Relatório trimestral apresentado à diretoria.',
-        'ativo' => '1',
-    ],
-    [
-        'id' => 'pro_005',
+        'id' => 'tag_003',
+        'nome' => 'Super Oferta',
+        'cor' => 'Vermelho (Super Oferta)',
+        'descricao' => 'Preço promocional por tempo limitado com desconto agressivo.',
         'created_at' => $lastWeek,
         'updated_at' => $now,
-        'nome' => 'Plataforma de Pagamentos Multicanal (PIX & Checkout)',
-        'cliente_id' => 'cli_003',
-        'natureza' => 'Desenvolvimento',
-        'prioridade' => 'Alta',
-        'descricao' => 'Gateway unificado de transações instantâneas com webhook bancário para o e-commerce.',
-        'observacoes' => 'Em testes de stress e homologação.',
-        'ativo' => '1',
     ],
     [
-        'id' => 'pro_006',
+        'id' => 'tag_004',
+        'nome' => 'Frete Grátis',
+        'cor' => 'Verde (Sucesso / Frete Grátis)',
+        'descricao' => 'Envio sem custo adicional para todo o território nacional.',
         'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'nome' => 'Otimização de Banco de Dados e Cache de Catálogo',
-        'cliente_id' => 'cli_003',
-        'natureza' => 'Infraestrutura',
-        'prioridade' => 'Baixa',
-        'descricao' => 'Redução de tempo de carregamento de páginas de categorias e busca de produtos para a Black Friday.',
-        'observacoes' => 'Ganhos de 40% em latência.',
-        'ativo' => '1',
+        'updated_at' => $now,
     ],
     [
-        'id' => 'pro_007',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastWeek,
-        'nome' => 'Ambiente Virtual de Aprendizagem Interativo (AVA)',
-        'cliente_id' => 'cli_004',
-        'natureza' => 'Desenvolvimento',
-        'prioridade' => 'Média',
-        'descricao' => 'Plataforma EAD com transmissão de videoaulas, fóruns moderados e geração automática de certificados.',
-        'observacoes' => 'Mais de 12.000 alunos previstos.',
-        'ativo' => '1',
-    ],
-    [
-        'id' => 'pro_008',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'nome' => 'Painel Interno de Métricas Corporativas (BI)',
-        'cliente_id' => '', // Sem cliente vinculado para teste de campos relacionais opcionais
-        'natureza' => 'Gestão',
-        'prioridade' => 'Baixa',
-        'descricao' => 'Iniciativa departamental interna para visualização de indicadores estratégicos e metas da equipe.',
-        'observacoes' => 'Projeto interno sem vínculo com cliente terceiro.',
-        'ativo' => '1',
+        'id' => 'tag_005',
+        'nome' => 'Edição Limitada',
+        'cor' => 'Roxo (Exclusivo / Premium)',
+        'descricao' => 'Lote exclusivo com número restrito de unidades fabricadas.',
+        'created_at' => $lastWeek,
+        'updated_at' => $now,
     ],
 ];
-$storage->write('projetos.csv', $projetosHeaders, $projetos);
+$storage->write('tags.csv', ['id', 'nome', 'cor', 'descricao', 'created_at', 'updated_at'], $tags);
 
 // -----------------------------------------------------------------------------
-// 4. TAREFAS (tarefas.csv)
+// 4. PRODUTOS
 // -----------------------------------------------------------------------------
-echo "[4/7] Populando Módulo: Tarefas (12 registros vinculados a Projetos)...\n";
-$tarefasHeaders = ['id', 'created_at', 'updated_at', 'titulo', 'projeto_id', 'prioridade', 'status', 'prazo', 'descricao'];
-$tarefas = [
+echo "[4/8] Populando Produtos do Catálogo...\n";
+$produtos = [
     [
-        'id' => 'tar_001',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastWeek,
-        'titulo' => 'Desenvolver endpoint de ingestão de telemetria GPS',
-        'projeto_id' => 'pro_001',
-        'prioridade' => 'Urgente',
-        'status' => 'Concluído',
-        'prazo' => '2026-09-15',
-        'descricao' => 'Criar rota de alta performance com validação de assinatura digital das viaturas.',
-    ],
-    [
-        'id' => 'tar_002',
-        'created_at' => $lastWeek,
-        'updated_at' => $yesterday,
-        'titulo' => 'Integrar notificações push no aplicativo dos motoristas',
-        'projeto_id' => 'pro_001',
-        'prioridade' => 'Alta',
-        'status' => 'Em Andamento',
-        'prazo' => '2026-10-05',
-        'descricao' => 'Alertas de trânsito intenso, rota otimizada e parada obrigatória de descanso.',
-    ],
-    [
-        'id' => 'tar_003',
-        'created_at' => $lastWeek,
-        'updated_at' => $now,
-        'titulo' => 'Testes de carga com 5.000 requisições simultâneas',
-        'projeto_id' => 'pro_001',
-        'prioridade' => 'Média',
-        'status' => 'A Fazer',
-        'prazo' => '2026-10-18',
-        'descricao' => 'Simular comportamento da API em horários de pico comercial.',
-    ],
-    [
-        'id' => 'tar_004',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'titulo' => 'Provisionamento de túnel IPsec entre matriz e datacenter',
-        'projeto_id' => 'pro_002',
-        'prioridade' => 'Alta',
-        'status' => 'Concluído',
-        'prazo' => '2026-09-08',
-        'descricao' => 'Conexão segura dedicada para sincronização de base de dados.',
-    ],
-    [
-        'id' => 'tar_005',
+        'id' => 'prd_001',
+        'nome' => 'Smartphone Galaxy Ultra 5G',
+        'categoria' => 'Eletrônicos & Smartphones',
+        'preco' => '3499.00',
+        'estoque' => '45',
+        'ativo' => '1',
+        'descricao' => 'Tela AMOLED de 6.7 pol, 256GB de armazenamento, câmera tripla de 108MP e bateria de 5000mAh.',
         'created_at' => $lastMonth,
         'updated_at' => $now,
-        'titulo' => 'Implementar assinatura digital ICP-Brasil nas prescrições',
-        'projeto_id' => 'pro_003',
-        'prioridade' => 'Urgente',
-        'status' => 'Em Andamento',
-        'prazo' => '2026-09-30',
-        'descricao' => 'Integração com certificados digitais A1/A3 e carimbo de tempo eletrônico.',
     ],
     [
-        'id' => 'tar_006',
+        'id' => 'prd_002',
+        'nome' => 'Notebook Pro 14 Pol M-Series 16GB',
+        'categoria' => 'Informática & Escritório',
+        'preco' => '5899.00',
+        'estoque' => '18',
+        'ativo' => '1',
+        'descricao' => 'Processador de 10 núcleos, SSD NVMe de 512GB, teclado retroiluminado e bateria com autonomia de 18 horas.',
         'created_at' => $lastMonth,
-        'updated_at' => $lastWeek,
-        'titulo' => 'Revisão de conformidade de prontuários com a LGPD',
-        'projeto_id' => 'pro_003',
-        'prioridade' => 'Alta',
-        'status' => 'Concluído',
-        'prazo' => '2026-09-12',
-        'descricao' => 'Anonimização de dados para visualização de equipe de triagem e recepção.',
+        'updated_at' => $now,
     ],
     [
-        'id' => 'tar_007',
-        'created_at' => $lastWeek,
-        'updated_at' => $lastWeek,
-        'titulo' => 'Varredura de portas e auditoria de firewalls perimetrais',
-        'projeto_id' => 'pro_004',
-        'prioridade' => 'Alta',
-        'status' => 'Concluído',
-        'prazo' => '2026-09-10',
-        'descricao' => 'Identificação e fechamento de portas de diagnóstico legadas desnecessárias.',
-    ],
-    [
-        'id' => 'tar_008',
+        'id' => 'prd_003',
+        'nome' => 'Fone de Ouvido Bluetooth Over-Ear ANC',
+        'categoria' => 'Acessórios & Wearables',
+        'preco' => '649.00',
+        'estoque' => '80',
+        'ativo' => '1',
+        'descricao' => 'Cancelamento de ruído ativo inteligente, microfone com IA para chamadas e almofadas com espuma viscoelástica.',
         'created_at' => $lastWeek,
         'updated_at' => $now,
-        'titulo' => 'Implementar webhook bancário de baixa automática de PIX',
-        'projeto_id' => 'pro_005',
-        'prioridade' => 'Urgente',
-        'status' => 'Em Andamento',
-        'prazo' => '2026-10-02',
-        'descricao' => 'Confirmação de recebimento em menos de 3 segundos para liberação de pedidos.',
     ],
     [
-        'id' => 'tar_009',
+        'id' => 'prd_004',
+        'nome' => 'Livro: Arquitetura de Software Prática & Limpa',
+        'categoria' => 'Livros & Cursos',
+        'preco' => '89.90',
+        'estoque' => '120',
+        'ativo' => '1',
+        'descricao' => 'Guia definitivo de boas práticas, desacoplamento, domínio orientado a objetos e desenvolvimento ágil.',
+        'created_at' => $lastMonth,
+        'updated_at' => $now,
+    ],
+    [
+        'id' => 'prd_005',
+        'nome' => 'Cadeira Ergonômica Presidente Mesh',
+        'categoria' => 'Casa & Conforto',
+        'preco' => '1290.00',
+        'estoque' => '14',
+        'ativo' => '1',
+        'descricao' => 'Apoio lombar 3D ajustável, braços articulados, rodízios em PU anti-risco e mecanismo sincronizado relax.',
         'created_at' => $lastWeek,
-        'updated_at' => $yesterday,
-        'titulo' => 'Desenvolver checkout simplificado em uma única tela',
-        'projeto_id' => 'pro_005',
-        'prioridade' => 'Média',
-        'status' => 'A Fazer',
-        'prazo' => '2026-10-15',
-        'descricao' => 'Redução de fricção na finalização da compra pelo celular.',
+        'updated_at' => $now,
     ],
     [
-        'id' => 'tar_010',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'titulo' => 'Indexação de busca de produtos por múltiplos filtros',
-        'projeto_id' => 'pro_006',
-        'prioridade' => 'Baixa',
-        'status' => 'Concluído',
-        'prazo' => '2026-09-02',
-        'descricao' => 'Otimização das tabelas relacionais de estoque e categorias.',
-    ],
-    [
-        'id' => 'tar_011',
-        'created_at' => $lastMonth,
-        'updated_at' => $yesterday,
-        'titulo' => 'Módulo de correção automática de simulados online',
-        'projeto_id' => 'pro_007',
-        'prioridade' => 'Média',
-        'status' => 'Em Andamento',
-        'prazo' => '2026-10-25',
-        'descricao' => 'Algoritmo de cálculo de notas com feedback imediato para os alunos.',
-    ],
-    [
-        'id' => 'tar_012',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'titulo' => 'Mapear KPIs da diretoria operacional',
-        'projeto_id' => 'pro_008',
-        'prioridade' => 'Baixa',
-        'status' => 'Cancelado',
-        'prazo' => '2026-08-30',
-        'descricao' => 'Escopo substituído por nova ferramenta analítica externa.',
-    ],
-];
-$storage->write('tarefas.csv', $tarefasHeaders, $tarefas);
-
-// -----------------------------------------------------------------------------
-// 5. EQUIPAMENTOS (equipamentos.csv)
-// -----------------------------------------------------------------------------
-echo "[5/7] Populando Módulo: Equipamentos de TI (8 registros)...\n";
-$equipamentosHeaders = ['id', 'created_at', 'updated_at', 'patrimonio', 'nome', 'categoria', 'fabricante', 'modelo', 'ativo', 'observacoes'];
-$equipamentos = [
-    [
-        'id' => 'eqp_001',
-        'created_at' => $lastMonth,
-        'updated_at' => $yesterday,
-        'patrimonio' => 'PAT-1001',
-        'nome' => 'Notebook Dell Latitude 5420',
-        'categoria' => 'Notebook',
-        'fabricante' => 'Dell',
-        'modelo' => 'Latitude 5420 Core i7 16GB 512GB SSD',
+        'id' => 'prd_006',
+        'nome' => 'Teclado Mecânico Compacto Wireless RGB',
+        'categoria' => 'Informática & Escritório',
+        'preco' => '420.00',
+        'estoque' => '35',
         'ativo' => '1',
-        'observacoes' => 'Equipamento de desenvolvimento com histórico completo de manutenções.',
-    ],
-    [
-        'id' => 'eqp_002',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastWeek,
-        'patrimonio' => 'PAT-1002',
-        'nome' => 'Notebook Lenovo ThinkPad T14 Gen 3',
-        'categoria' => 'Notebook',
-        'fabricante' => 'Lenovo',
-        'modelo' => 'ThinkPad T14 AMD Ryzen 7 PRO 32GB',
-        'ativo' => '1',
-        'observacoes' => 'Alocado com a coordenação de projetos.',
-    ],
-    [
-        'id' => 'eqp_003',
-        'created_at' => $lastMonth,
-        'updated_at' => $yesterday,
-        'patrimonio' => 'PAT-1003',
-        'nome' => 'Servidor Dell PowerEdge R740',
-        'categoria' => 'Servidor',
-        'fabricante' => 'Dell',
-        'modelo' => 'PowerEdge R740 2x Intel Xeon Gold 128GB',
-        'ativo' => '1',
-        'observacoes' => 'Servidor de virtualização e banco de dados de homologação.',
-    ],
-    [
-        'id' => 'eqp_004',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastWeek,
-        'patrimonio' => 'PAT-1004',
-        'nome' => 'Switch Gerenciável Cisco Catalyst 2960X',
-        'categoria' => 'Rede / Switch',
-        'fabricante' => 'Cisco',
-        'modelo' => 'WS-C2960X-48FPS-L Gigabit PoE+',
-        'ativo' => '1',
-        'observacoes' => 'Switch central do rack principal do datacenter.',
-    ],
-    [
-        'id' => 'eqp_005',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'patrimonio' => 'PAT-1005',
-        'nome' => 'Monitor Dell UltraSharp 27" 4K',
-        'categoria' => 'Monitor',
-        'fabricante' => 'Dell',
-        'modelo' => 'UltraSharp U2723QE IPS Black USB-C',
-        'ativo' => '1',
-        'observacoes' => 'Estação de design e testes de acessibilidade visual.',
-    ],
-    [
-        'id' => 'eqp_006',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastWeek,
-        'patrimonio' => 'PAT-1006',
-        'nome' => 'Impressora Multifuncional HP LaserJet Pro',
-        'categoria' => 'Impressora',
-        'fabricante' => 'HP',
-        'modelo' => 'LaserJet Pro M428fdw Wireless duplex',
-        'ativo' => '1',
-        'observacoes' => 'Impressora departamental da recepção e suporte administrativo.',
-    ],
-    [
-        'id' => 'eqp_007',
-        'created_at' => $lastMonth,
-        'updated_at' => $yesterday,
-        'patrimonio' => 'PAT-1007',
-        'nome' => 'Desktop Dell OptiPlex 7090 Micro',
-        'categoria' => 'Desktop',
-        'fabricante' => 'Dell',
-        'modelo' => 'OptiPlex 7090 Micro Core i5 16GB',
-        'ativo' => '1',
-        'observacoes' => 'Terminal de atendimento da tesouraria.',
-    ],
-    [
-        'id' => 'eqp_008',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'patrimonio' => 'PAT-1008',
-        'nome' => 'Roteador Mikrotik Cloud Router CCR1009',
-        'categoria' => 'Rede / Switch',
-        'fabricante' => 'Mikrotik',
-        'modelo' => 'CCR1009-7G-1C-1S+ 9 Cores',
-        'ativo' => '0',
-        'observacoes' => 'Equipamento reserva de contingência (sem manutenções vinculadas, permite teste de exclusão).',
-    ],
-];
-$storage->write('equipamentos.csv', $equipamentosHeaders, $equipamentos);
-
-// -----------------------------------------------------------------------------
-// 6. MANUTENÇÕES (manutencoes.csv)
-// -----------------------------------------------------------------------------
-echo "[6/7] Populando Módulo: Manutenções (8 registros vinculados a Equipamentos)...\n";
-$manutencoesHeaders = ['id', 'created_at', 'updated_at', 'equipamento_id', 'tipo', 'tecnico', 'data_servico', 'custo', 'concluido', 'observacoes'];
-$manutencoes = [
-    [
-        'id' => 'man_001',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'equipamento_id' => 'eqp_001',
-        'tipo' => 'Preventiva',
-        'tecnico' => 'Lucas Mendes',
-        'data_servico' => '2026-08-15',
-        'custo' => '180',
-        'concluido' => '1',
-        'observacoes' => 'Desmontagem, desobstrução de dutos de ventilação e substituição de pasta térmica por prata.',
-    ],
-    [
-        'id' => 'man_002',
-        'created_at' => $lastWeek,
-        'updated_at' => $lastWeek,
-        'equipamento_id' => 'eqp_001',
-        'tipo' => 'Upgrade / Expansão',
-        'tecnico' => 'Lucas Mendes',
-        'data_servico' => '2026-09-05',
-        'custo' => '450',
-        'concluido' => '1',
-        'observacoes' => 'Instalação de pente adicional de 16GB DDR4 3200MHz para execução de contêineres pesados.',
-    ],
-    [
-        'id' => 'man_003',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'equipamento_id' => 'eqp_002',
-        'tipo' => 'Preventiva',
-        'tecnico' => 'Amanda Souza',
-        'data_servico' => '2026-08-22',
-        'custo' => '150',
-        'concluido' => '1',
-        'observacoes' => 'Diagnóstico de bateria, limpeza do teclado retroiluminado e calibração do trackpoint.',
-    ],
-    [
-        'id' => 'man_004',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'equipamento_id' => 'eqp_003',
-        'tipo' => 'Preventiva',
-        'tecnico' => 'Fernando Reis',
-        'data_servico' => '2026-07-20',
-        'custo' => '850',
-        'concluido' => '1',
-        'observacoes' => 'Manutenção semestral preventiva de fontes redundantes e ventilação do chassi.',
-    ],
-    [
-        'id' => 'man_005',
-        'created_at' => $lastWeek,
-        'updated_at' => $lastWeek,
-        'equipamento_id' => 'eqp_003',
-        'tipo' => 'Upgrade / Expansão',
-        'tecnico' => 'Fernando Reis',
-        'data_servico' => '2026-09-02',
-        'custo' => '2200',
-        'concluido' => '1',
-        'observacoes' => 'Adição de 2 discos SAS de 2.4TB 10K RPM no arranjo RAID-10 existente.',
-    ],
-    [
-        'id' => 'man_006',
-        'created_at' => $lastMonth,
-        'updated_at' => $lastMonth,
-        'equipamento_id' => 'eqp_004',
-        'tipo' => 'Corretiva',
-        'tecnico' => 'Roberto Carlos',
-        'data_servico' => '2026-08-10',
-        'custo' => '320',
-        'concluido' => '1',
-        'observacoes' => 'Substituição de módulo de porta PoE avariada após tempestade elétrica e atualização do Cisco IOS.',
-    ],
-    [
-        'id' => 'man_007',
-        'created_at' => $lastWeek,
-        'updated_at' => $lastWeek,
-        'equipamento_id' => 'eqp_006',
-        'tipo' => 'Limpeza / Calibração',
-        'tecnico' => 'Amanda Souza',
-        'data_servico' => '2026-09-11',
-        'custo' => '190',
-        'concluido' => '1',
-        'observacoes' => 'Substituição dos roletes de tração do alimentador ADF e limpeza do espelho óptico.',
-    ],
-    [
-        'id' => 'man_008',
+        'descricao' => 'Switches lineares silenciosos, conexão tri-mode (2.4GHz, Bluetooth e USB-C) e teclas PBT de alta durabilidade.',
         'created_at' => $yesterday,
         'updated_at' => $now,
-        'equipamento_id' => 'eqp_007',
-        'tipo' => 'Corretiva',
-        'tecnico' => 'Lucas Mendes',
-        'data_servico' => '2026-09-17',
-        'custo' => '280',
-        'concluido' => '0',
-        'observacoes' => 'Investigação de tela azul (BSOD) intermitente; aguardando liberação do usuário para reinstalação do SO.',
+    ],
+    [
+        'id' => 'prd_007',
+        'nome' => 'Monitor Gamer 27 Pol IPS 165Hz QHD',
+        'categoria' => 'Informática & Escritório',
+        'preco' => '1799.00',
+        'estoque' => '22',
+        'ativo' => '1',
+        'descricao' => 'Resolução 2560x1440, tempo de resposta de 1ms, suporte a HDR10 e tecnologia FreeSync Premium.',
+        'created_at' => $yesterday,
+        'updated_at' => $now,
+    ],
+    [
+        'id' => 'prd_008',
+        'nome' => 'Carregador Sem Fio por Indução 3 em 1',
+        'categoria' => 'Acessórios & Wearables',
+        'preco' => '229.00',
+        'estoque' => '0',
+        'ativo' => '0',
+        'descricao' => 'Base rápida magnética compatível com smartphone, fones e smartwatch simultaneamente.',
+        'created_at' => $lastMonth,
+        'updated_at' => $lastWeek,
     ],
 ];
-$storage->write('manutencoes.csv', $manutencoesHeaders, $manutencoes);
+$storage->write('produtos.csv', ['id', 'nome', 'categoria', 'preco', 'estoque', 'ativo', 'descricao', 'created_at', 'updated_at'], $produtos);
 
 // -----------------------------------------------------------------------------
-// 7. RELACIONAMENTO N:N COM TABELA PIVÔ (projeto_equipamentos.csv)
+// 5. TABELA PIVÔ N:N (PRODUTOS <-> ETIQUETAS)
 // -----------------------------------------------------------------------------
-echo "[7/8] Populando Tabela Pivô N:N: Projetos <-> Equipamentos (10 associações)...\n";
-$pivotHeaders = ['id', 'created_at', 'projeto_id', 'equipamento_id'];
-$projetoEquipamentos = [
-    ['id' => 'pe_001', 'created_at' => $lastMonth, 'projeto_id' => 'pro_001', 'equipamento_id' => 'eqp_001'],
-    ['id' => 'pe_002', 'created_at' => $lastMonth, 'projeto_id' => 'pro_001', 'equipamento_id' => 'eqp_003'],
-    ['id' => 'pe_003', 'created_at' => $lastMonth, 'projeto_id' => 'pro_001', 'equipamento_id' => 'eqp_004'],
-    ['id' => 'pe_004', 'created_at' => $lastMonth, 'projeto_id' => 'pro_002', 'equipamento_id' => 'eqp_003'],
-    ['id' => 'pe_005', 'created_at' => $lastMonth, 'projeto_id' => 'pro_002', 'equipamento_id' => 'eqp_004'],
-    ['id' => 'pe_006', 'created_at' => $lastMonth, 'projeto_id' => 'pro_003', 'equipamento_id' => 'eqp_002'],
-    ['id' => 'pe_007', 'created_at' => $lastWeek,  'projeto_id' => 'pro_004', 'equipamento_id' => 'eqp_002'],
-    ['id' => 'pe_008', 'created_at' => $lastWeek,  'projeto_id' => 'pro_004', 'equipamento_id' => 'eqp_004'],
-    ['id' => 'pe_009', 'created_at' => $lastWeek,  'projeto_id' => 'pro_005', 'equipamento_id' => 'eqp_001'],
-    ['id' => 'pe_010', 'created_at' => $lastWeek,  'projeto_id' => 'pro_005', 'equipamento_id' => 'eqp_005'],
+echo "[5/8] Criando Vínculos N:N na Tabela Pivô (produto_tags.csv)...\n";
+$produtoTags = [
+    ['id' => 'ptg_001', 'created_at' => $lastMonth, 'produto_id' => 'prd_001', 'tag_id' => 'tag_001'], // Galaxy: Lançamento
+    ['id' => 'ptg_002', 'created_at' => $lastMonth, 'produto_id' => 'prd_001', 'tag_id' => 'tag_002'], // Galaxy: Mais Vendido
+    ['id' => 'ptg_003', 'created_at' => $lastMonth, 'produto_id' => 'prd_001', 'tag_id' => 'tag_004'], // Galaxy: Frete Grátis
+    ['id' => 'ptg_004', 'created_at' => $lastMonth, 'produto_id' => 'prd_002', 'tag_id' => 'tag_002'], // Notebook: Mais Vendido
+    ['id' => 'ptg_005', 'created_at' => $lastMonth, 'produto_id' => 'prd_002', 'tag_id' => 'tag_004'], // Notebook: Frete Grátis
+    ['id' => 'ptg_006', 'created_at' => $lastWeek,  'produto_id' => 'prd_003', 'tag_id' => 'tag_003'], // Fone: Super Oferta
+    ['id' => 'ptg_007', 'created_at' => $lastWeek,  'produto_id' => 'prd_003', 'tag_id' => 'tag_004'], // Fone: Frete Grátis
+    ['id' => 'ptg_008', 'created_at' => $lastMonth, 'produto_id' => 'prd_004', 'tag_id' => 'tag_002'], // Livro: Mais Vendido
+    ['id' => 'ptg_009', 'created_at' => $lastWeek,  'produto_id' => 'prd_005', 'tag_id' => 'tag_005'], // Cadeira: Edição Limitada
+    ['id' => 'ptg_010', 'created_at' => $lastWeek,  'produto_id' => 'prd_005', 'tag_id' => 'tag_004'], // Cadeira: Frete Grátis
+    ['id' => 'ptg_011', 'created_at' => $yesterday, 'produto_id' => 'prd_006', 'tag_id' => 'tag_001'], // Teclado: Lançamento
+    ['id' => 'ptg_012', 'created_at' => $yesterday, 'produto_id' => 'prd_007', 'tag_id' => 'tag_003'], // Monitor: Super Oferta
 ];
-$storage->write('projeto_equipamentos.csv', $pivotHeaders, $projetoEquipamentos);
+$storage->write('produto_tags.csv', ['id', 'created_at', 'produto_id', 'tag_id'], $produtoTags);
 
 // -----------------------------------------------------------------------------
-// 8. AUDITORIA E BACKUP DE DEMONSTRAÇÃO
+// 6. PEDIDOS (1:N COM CLIENTES E PRODUTOS - RESTRICT)
+// -----------------------------------------------------------------------------
+echo "[6/8] Populando Pedidos e Vendas...\n";
+$pedidos = [
+    [
+        'id' => 'ped_001',
+        'numero' => 'PED-2026-001',
+        'cliente_id' => 'cli_001',
+        'produto_id' => 'prd_001',
+        'quantidade' => '1',
+        'valor_total' => '3499.00',
+        'status' => 'Entregue',
+        'data_pedido' => date('Y-m-d', strtotime('-15 days')),
+        'observacoes' => 'Entregue com sucesso com nota fiscal acompanhada.',
+        'created_at' => date('c', strtotime('-15 days')),
+        'updated_at' => date('c', strtotime('-12 days')),
+    ],
+    [
+        'id' => 'ped_002',
+        'numero' => 'PED-2026-002',
+        'cliente_id' => 'cli_002',
+        'produto_id' => 'prd_002',
+        'quantidade' => '1',
+        'valor_total' => '5899.00',
+        'status' => 'Em Transporte',
+        'data_pedido' => date('Y-m-d', strtotime('-5 days')),
+        'observacoes' => 'Despachado via transportadora expressa com código rastreado.',
+        'created_at' => date('c', strtotime('-5 days')),
+        'updated_at' => date('c', strtotime('-2 days')),
+    ],
+    [
+        'id' => 'ped_003',
+        'numero' => 'PED-2026-003',
+        'cliente_id' => 'cli_003',
+        'produto_id' => 'prd_003',
+        'quantidade' => '2',
+        'valor_total' => '1298.00',
+        'status' => 'Aprovado',
+        'data_pedido' => date('Y-m-d', strtotime('-3 days')),
+        'observacoes' => 'Pagamento aprovado via PIX, aguardando separação no estoque.',
+        'created_at' => date('c', strtotime('-3 days')),
+        'updated_at' => date('c', strtotime('-3 days')),
+    ],
+    [
+        'id' => 'ped_004',
+        'numero' => 'PED-2026-004',
+        'cliente_id' => 'cli_001',
+        'produto_id' => 'prd_004',
+        'quantidade' => '1',
+        'valor_total' => '89.90',
+        'status' => 'Entregue',
+        'data_pedido' => date('Y-m-d', strtotime('-8 days')),
+        'observacoes' => 'Entrega rápida realizada sem intercorrências.',
+        'created_at' => date('c', strtotime('-8 days')),
+        'updated_at' => date('c', strtotime('-6 days')),
+    ],
+    [
+        'id' => 'ped_005',
+        'numero' => 'PED-2026-005',
+        'cliente_id' => 'cli_004',
+        'produto_id' => 'prd_005',
+        'quantidade' => '1',
+        'valor_total' => '1290.00',
+        'status' => 'Pendente',
+        'data_pedido' => date('Y-m-d', strtotime('-1 day')),
+        'observacoes' => 'Aguardando confirmação bancária do boleto.',
+        'created_at' => $yesterday,
+        'updated_at' => $yesterday,
+    ],
+    [
+        'id' => 'ped_006',
+        'numero' => 'PED-2026-006',
+        'cliente_id' => 'cli_002',
+        'produto_id' => 'prd_006',
+        'quantidade' => '1',
+        'valor_total' => '420.00',
+        'status' => 'Aprovado',
+        'data_pedido' => date('Y-m-d'),
+        'observacoes' => 'Item separado na expedição para envio no próximo lote.',
+        'created_at' => $now,
+        'updated_at' => $now,
+    ],
+];
+$storage->write('pedidos.csv', ['id', 'numero', 'cliente_id', 'produto_id', 'quantidade', 'valor_total', 'status', 'data_pedido', 'observacoes', 'created_at', 'updated_at'], $pedidos);
+
+// -----------------------------------------------------------------------------
+// 7. AVALIAÇÕES (1:N EM CASCATA COM PRODUTOS E CLIENTES)
+// -----------------------------------------------------------------------------
+echo "[7/8] Populando Avaliações e Feedback dos Clientes...\n";
+$avaliacoes = [
+    [
+        'id' => 'avl_001',
+        'produto_id' => 'prd_001',
+        'cliente_id' => 'cli_001',
+        'nota' => '⭐⭐⭐⭐⭐ 5 Estrelas (Excelente)',
+        'titulo' => 'Simplesmente espetacular!',
+        'comentario' => 'Câmera incrível, fotos nítidas até à noite. A tela tem cores muito vivas e a bateria dura mais de um dia e meio com uso intenso.',
+        'data' => date('Y-m-d', strtotime('-10 days')),
+        'created_at' => date('c', strtotime('-10 days')),
+        'updated_at' => date('c', strtotime('-10 days')),
+    ],
+    [
+        'id' => 'avl_002',
+        'produto_id' => 'prd_002',
+        'cliente_id' => 'cli_002',
+        'nota' => '⭐⭐⭐⭐⭐ 5 Estrelas (Excelente)',
+        'titulo' => 'Máquina perfeita para desenvolvedores',
+        'comentario' => 'Compila projetos pesados em segundos sem esquentar nem fazer barulho. O teclado é extremamente confortável para longas sessões.',
+        'data' => date('Y-m-d', strtotime('-4 days')),
+        'created_at' => date('c', strtotime('-4 days')),
+        'updated_at' => date('c', strtotime('-4 days')),
+    ],
+    [
+        'id' => 'avl_003',
+        'produto_id' => 'prd_003',
+        'cliente_id' => 'cli_003',
+        'nota' => '⭐⭐⭐⭐ 4 Estrelas (Muito Bom)',
+        'titulo' => 'Cancelamento de ruído muito eficiente',
+        'comentario' => 'Isola perfeitamente o som do escritório aberto. O acabamento é de muita qualidade. Só achei o estojo de transporte um pouco volumoso.',
+        'data' => date('Y-m-d', strtotime('-2 days')),
+        'created_at' => date('c', strtotime('-2 days')),
+        'updated_at' => date('c', strtotime('-2 days')),
+    ],
+    [
+        'id' => 'avl_004',
+        'produto_id' => 'prd_004',
+        'cliente_id' => 'cli_001',
+        'nota' => '⭐⭐⭐⭐⭐ 5 Estrelas (Excelente)',
+        'titulo' => 'Leitura obrigatória para todo programador',
+        'comentario' => 'Explicações muito práticas e diretas ao ponto. Mudou a forma como projeto as camadas de serviço e repositório nos meus projetos.',
+        'data' => date('Y-m-d', strtotime('-6 days')),
+        'created_at' => date('c', strtotime('-6 days')),
+        'updated_at' => date('c', strtotime('-6 days')),
+    ],
+    [
+        'id' => 'avl_005',
+        'produto_id' => 'prd_005',
+        'cliente_id' => 'cli_004',
+        'nota' => '⭐⭐⭐⭐ 4 Estrelas (Muito Bom)',
+        'titulo' => 'Ergonomia nota 10',
+        'comentario' => 'Acabaram minhas dores nas costas depois de trocar de cadeira. O tecido em mesh respirável é excelente para dias mais quentes.',
+        'data' => date('Y-m-d'),
+        'created_at' => $now,
+        'updated_at' => $now,
+    ],
+];
+$storage->write('avaliacoes.csv', ['id', 'produto_id', 'cliente_id', 'nota', 'titulo', 'comentario', 'data', 'created_at', 'updated_at'], $avaliacoes);
+
+// -----------------------------------------------------------------------------
+// 8. LOGS DE AUDITORIA & BACKUP INICIAL
 // -----------------------------------------------------------------------------
 echo "[8/8] Gerando Histórico de Auditoria e Snapshot de Backup...\n";
-$auditHeaders = ['id', 'created_at', 'user_id', 'action', 'details'];
-$auditRows = [
-    ['id' => 'aud_20260818100000_a001', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'setup_completed', 'details' => 'Instalação inicial do framework'],
-    ['id' => 'aud_20260818100500_a002', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'module_created', 'details' => 'slug=clientes'],
-    ['id' => 'aud_20260818101000_a003', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'module_created', 'details' => 'slug=projetos'],
-    ['id' => 'aud_20260818101500_a004', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'module_created', 'details' => 'slug=tarefas'],
-    ['id' => 'aud_20260818102000_a005', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'module_created', 'details' => 'slug=equipamentos'],
-    ['id' => 'aud_20260818102500_a006', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'module_created', 'details' => 'slug=manutencoes'],
-    ['id' => 'aud_20260901083000_a007', 'created_at' => $lastWeek, 'user_id' => 'usr_002', 'action' => 'login', 'details' => 'Administrador conectado via web'],
-    ['id' => 'aud_20260901091500_a008', 'created_at' => $lastWeek, 'user_id' => 'usr_002', 'action' => 'user_created', 'details' => 'Novo operador criado: carlos'],
-    ['id' => 'aud_20260910142000_a009', 'created_at' => $yesterday, 'user_id' => 'usr_003', 'action' => 'login', 'details' => 'Operador Carlos iniciou turno'],
-    ['id' => 'aud_20260918080000_a010', 'created_at' => $now, 'user_id' => 'usr_001', 'action' => 'backup_created', 'details' => 'Snapshot inicial da base populada'],
+$auditLogs = [
+    ['id' => 'aud_001', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'setup', 'details' => 'Instalação inicial da aplicação concluída'],
+    ['id' => 'aud_002', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'module_created', 'details' => 'slug=produtos | nome=Produtos'],
+    ['id' => 'aud_003', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'module_created', 'details' => 'slug=tags | nome=Etiquetas'],
+    ['id' => 'aud_004', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'module_created', 'details' => 'slug=pedidos | nome=Pedidos'],
+    ['id' => 'aud_005', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'module_created', 'details' => 'slug=avaliacoes | nome=Avaliações'],
+    ['id' => 'aud_006', 'created_at' => $lastWeek,  'user_id' => 'usr_002', 'action' => 'login', 'details' => 'IP=127.0.0.1'],
+    ['id' => 'aud_007', 'created_at' => $lastWeek,  'user_id' => 'usr_002', 'action' => 'crud.create', 'details' => 'module=produtos | id=prd_001'],
+    ['id' => 'aud_008', 'created_at' => $yesterday, 'user_id' => 'usr_003', 'action' => 'crud.create', 'details' => 'module=pedidos | id=ped_005'],
+    ['id' => 'aud_009', 'created_at' => $now,       'user_id' => 'usr_001', 'action' => 'backup_create', 'details' => 'Carga inicial de demonstração'],
 ];
-$storage->write('audit_log.csv', $auditHeaders, $auditRows);
+$storage->write('audit_log.csv', ['id', 'created_at', 'user_id', 'action', 'details'], $auditLogs);
 
-// Cria um snapshot de backup inicial em storage/backups/
+// Backup de demonstração
 $app = new \App\Core\Application($config, $storage, new \App\Core\Request());
 $backupService = new BackupService($app);
 $backupId = $backupService->create('carga_inicial_demonstracao', 'usr_001');
 
 echo "\n" . str_repeat('=', 78) . "\n";
-echo "  BANCO DE DADOS POPULADO COM SUCESSO!\n";
-echo str_repeat('=', 78) . "\n\n";
-
-echo " Resumo dos Dados Carregados:\n";
-echo "  * Usuários: " . count($users) . " registros (dev, admin, carlos, mariana, inativo)\n";
-echo "  * Clientes: " . count($clientes) . " registros (Ativos, Prospect, Em Implantação e Inativo)\n";
-echo "  * Projetos: " . count($projetos) . " registros (vinculados a Clientes com on_delete: restrict)\n";
-echo "  * Tarefas: " . count($tarefas) . " registros (vinculadas a Projetos com on_delete: cascade)\n";
-echo "  * Equipamentos: " . count($equipamentos) . " registros (Notebooks, Servidores, Switches, etc.)\n";
-echo "  * Manutenções: " . count($manutencoes) . " registros (com custos, técnicos e histórico)\n";
-echo "  * Tabela Pivô N:N: " . count($projetoEquipamentos) . " associações (Projetos <-> Equipamentos em projeto_equipamentos.csv)\n";
-echo "  * Auditoria: " . count($auditRows) . " eventos registrados em storage/logs/audit_log.csv\n";
-echo "  * Snapshot de Backup: " . $backupId . " gerado em storage/backups/\n\n";
-
-echo " Contas de Acesso Prontas para Testes:\n";
-echo "  ----------------------------------------------------------------------------\n";
-echo "  Perfil          | Usuário   | Senha        | Papel       | Observação\n";
-echo "  ----------------------------------------------------------------------------\n";
-echo "  Desenvolvedor   | dev       | (sua senha)  | role_dev    | Acesso total + Dev-End\n";
-echo "  Administrador   | admin     | admin123456  | role_admin  | Gestão + CRUDs completos\n";
-echo "  Usuário Padrão  | carlos    | user123456   | role_user   | Visão geral (somente leitura)\n";
-echo "  Usuário Padrão  | mariana   | user123456   | role_user   | Visão geral (somente leitura)\n";
-echo "  Desativado      | inativo   | user123456   | role_user   | Bloqueio ativo de login\n";
-echo "  ----------------------------------------------------------------------------\n\n";
-
-echo " Cenários de Teste Habilitados:\n";
-echo "  1. Visão 360° reversa: Abra o Cliente 'TechLog' e veja seus projetos listados.\n";
-echo "  2. Restrição de exclusão: Tente excluir o Cliente 'TechLog' (bloqueado por restrict).\n";
-echo "  3. Exclusão permitida: Tente excluir o Cliente 'Prime Consultoria' (sem projetos).\n";
-echo "  4. Exclusão em cascata: Abra o Projeto 'Portal de Telemetria' (possui 3 tarefas).\n";
-echo "  5. Filtros por relação: Na listagem de Projetos, clique no badge do Cliente.\n";
-echo "  6. Dev-End: Acesse /dev/backups e /dev/logs para ver o histórico e o snapshot.\n";
-echo "  7. RBAC: Faça login com 'carlos' para verificar a interface com permissões restritas.\n";
-echo "  8. Relacionamento N:N: Abra o Projeto 'pro_001' e veja seus múltiplos Equipamentos; abra o Equipamento 'eqp_003' e veja na Visão 360° os Projetos que o utilizam.\n";
-echo str_repeat('=', 78) . "\n\n";
+echo "  SUCESSO: Base de dados populada com dados intuitivos de Catálogo & Vendas!\n";
+echo str_repeat('=', 78) . "\n";
+echo "  Módulos carregados: Clientes (6), Produtos (8), Etiquetas (5), Pedidos (6), Avaliações (5)\n";
+echo "  Tabela Pivô N:N: 12 associações em storage/data/produto_tags.csv\n";
+echo "  Snapshot de Backup: {$backupId}\n\n";
