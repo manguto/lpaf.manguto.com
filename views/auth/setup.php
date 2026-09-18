@@ -20,11 +20,11 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
             <div>
                 <label for="name">Seu Nome Completo</label>
-                <input type="text" id="name" name="name" placeholder="Ex: Administrador" required>
+                <input type="text" id="name" name="name" placeholder="Ex: Fulano da Silva" required>
             </div>
             <div>
                 <label for="username">Login (Nome de Usuário)</label>
-                <input type="text" id="username" name="username" pattern="[a-zA-Z0-9._-]{3,30}" placeholder="Ex: admin" title="O login deve conter entre 3 e 30 caracteres (letras, números, '.', '_' ou '-'), sem @" required>
+                <input type="text" id="username" name="username" pattern="[a-zA-Z0-9._-]{3,30}" placeholder="Ex: dev" title="O login deve conter entre 3 e 30 caracteres (letras, números, '.', '_' ou '-'), sem @" required>
             </div>
         </div>
 

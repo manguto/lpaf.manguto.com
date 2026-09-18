@@ -38,10 +38,15 @@ final class SeedService
         $adminHash = password_hash('admin123456', PASSWORD_DEFAULT);
         $userHash = password_hash('user123456', PASSWORD_DEFAULT);
 
+        $devName = 'Fulano da Silva (Desenvolvedor)';
+        if ($existingDev && !empty($existingDev['name']) && !in_array($existingDev['name'], ['Desenvolvedor', 'dev', 'Desenvolvedor Master'], true)) {
+            $devName = $existingDev['name'];
+        }
+
         $users = [
             [
                 'id' => 'usr_001',
-                'name' => $existingDev['name'] ?? 'Desenvolvedor Master',
+                'name' => $devName,
                 'username' => 'dev',
                 'password_hash' => $devHash,
                 'active' => '1',
@@ -50,7 +55,7 @@ final class SeedService
             ],
             [
                 'id' => 'usr_002',
-                'name' => 'Administrador Geral',
+                'name' => 'Ciclana de Oliveira (Administradora)',
                 'username' => 'admin',
                 'password_hash' => $adminHash,
                 'active' => '1',
@@ -59,8 +64,8 @@ final class SeedService
             ],
             [
                 'id' => 'usr_003',
-                'name' => 'Fulano da Silva',
-                'username' => 'fulano',
+                'name' => 'Beltrano Pereira (Operador)',
+                'username' => 'operador',
                 'password_hash' => $userHash,
                 'active' => '1',
                 'created_at' => $lastWeek,
@@ -68,8 +73,8 @@ final class SeedService
             ],
             [
                 'id' => 'usr_004',
-                'name' => 'Ciclana de Oliveira',
-                'username' => 'ciclana',
+                'name' => 'Dulce Santos (Analista)',
+                'username' => 'analista',
                 'password_hash' => $userHash,
                 'active' => '1',
                 'created_at' => $lastWeek,
@@ -77,7 +82,7 @@ final class SeedService
             ],
             [
                 'id' => 'usr_005',
-                'name' => 'Beltrano Inativo (Teste)',
+                'name' => 'Juvêncio Santos (Inativo)',
                 'username' => 'inativo',
                 'password_hash' => $userHash,
                 'active' => '0',

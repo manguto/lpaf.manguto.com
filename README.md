@@ -1136,13 +1136,13 @@ Para analisar todas as funcionalidades atuais e validar implementações (filtro
 
 #### Contas de acesso disponíveis
 
-| Perfil | Usuário | Senha | Papel (`role`) | Finalidade de Teste |
-|---|---|---|---|---|
-| **Desenvolvedor** | `dev` | *(sua senha do setup)* | `role_dev` | Acesso integral, menus `/dev`, backups, logs e Entity Builder |
-| **Administrador** | `admin` | `admin123456` | `role_admin` | Gestão de usuários, perfis e operações completas de CRUD |
-| **Usuário Padrão** | `fulano` | `user123456` | `role_user` | Acesso operacional ilustrativo (Fulano da Silva) |
-| **Usuária Padrão** | `ciclana` | `user123456` | `role_user` | Acesso operacional ilustrativo (Ciclana de Oliveira) |
-| **Desativado** | `inativo` | `user123456` | `role_user` | Validação de bloqueio de autenticação (Beltrano Inativo) |
+| Perfil | Usuário (`username`) | Nome de Exibição | Senha | Papel (`role`) | Finalidade de Teste |
+|---|---|---|---|---|---|
+| **Desenvolvedor** | `dev` | Fulano da Silva (Desenvolvedor) | *(senha do setup)* | `role_dev` | Acesso integral, menus `/dev`, backups, logs e Entity Builder |
+| **Administrador** | `admin` | Ciclana de Oliveira (Administradora) | `admin123456` | `role_admin` | Gestão de usuários, perfis e operações completas de CRUD |
+| **Operador** | `operador` | Beltrano Pereira (Operador) | `user123456` | `role_user` | Acesso operacional padrão (leitura nos módulos) |
+| **Analista** | `analista` | Dulce Santos (Analista) | `user123456` | `role_user` | Acesso operacional para testes simultâneos |
+| **Desativado** | `inativo` | Juvêncio Santos (Inativo) | `user123456` | `role_user` | Validação de bloqueio de autenticação (`active = 0`) |
 
 #### Módulos e dados populados (Catálogo & Gestão Comercial)
 
