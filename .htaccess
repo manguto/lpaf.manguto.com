@@ -1,5 +1,4 @@
 Options -Indexes
-DirectorySlash Off
 
 # Bloqueio de arquivos ocultos (.env, .git) e arquivos de configuração sensíveis
 <IfModule mod_authz_core.c>
