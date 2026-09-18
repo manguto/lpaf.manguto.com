@@ -57,11 +57,15 @@ final class PasswordResetController extends Controller
 
         $isLocal = ($this->app->config->get('app_env') === 'local');
         $devLink = ($isLocal && $result !== null) ? $result['url'] : null;
+        $devUserNotFound = ($isLocal && $result === null);
+        $existingUsers = $devUserNotFound ? array_column($this->app->users->all(), 'username') : [];
 
         $this->view('auth/forgot-password', [
             'error' => null,
             'success' => true,
             'devLink' => $devLink,
+            'devUserNotFound' => $devUserNotFound,
+            'existingUsers' => $existingUsers,
             'username' => $username,
         ]);
     }

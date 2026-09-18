@@ -36,6 +36,21 @@
                     Redefinir Senha Agora &rarr;
                 </a>
             </div>
+        <?php elseif (!empty($devUserNotFound)): ?>
+            <div style="background-color: var(--warning-bg); border: 1.5px solid var(--warning); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span class="badge badge-warning" style="font-size: 0.75rem;">Ambiente Local (XAMPP)</span>
+                    <span style="font-size: 0.75rem; color: var(--warning-text); font-weight: 700;">Diagnóstico Dev</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--warning-text); margin-bottom: 0.5rem; line-height: 1.4;">
+                    O usuário <strong>"<?= e($username) ?>"</strong> não existe na base de dados (<code>storage/data/users.csv</code>). Por isso, nenhum token de redefinição foi emitido.
+                </p>
+                <?php if (!empty($existingUsers)): ?>
+                    <p style="font-size: 0.825rem; color: var(--text-main); margin-bottom: 0;">
+                        Usuário(s) cadastrado(s) no momento: <strong><?= e(implode(', ', $existingUsers)) ?></strong>
+                    </p>
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
 
         <div style="text-align: center; margin-top: 1.25rem;">

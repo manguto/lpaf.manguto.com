@@ -35,6 +35,7 @@ final class PasswordResetService
                 null,
                 "username=" . substr($username, 0, 80) . "; ip={$ip}; reason=user_not_found_or_inactive"
             );
+            $this->logSimulatedMailFailure($username, $ip, 'Usuário inexistente ou inativo');
             return null;
         }
 
@@ -177,6 +178,30 @@ final class PasswordResetService
             $name,
             $resetUrl,
             $expiresAt,
+            $ip
+        );
+
+        @file_put_contents($mailLogFile, $entry, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Registra no mail.log tentativas de solicitação que não geraram e-mail (ex: usuário inexistente).
+     */
+    private function logSimulatedMailFailure(string $username, string $ip, string $reason): void
+    {
+        $logsDir = $this->app->config->get('storage_logs');
+        if (!is_dir($logsDir)) {
+            mkdir($logsDir, 0775, true);
+        }
+
+        $mailLogFile = $logsDir . '/mail.log';
+        $timestamp = date('Y-m-d H:i:s');
+
+        $entry = sprintf(
+            "[%s] RECOVERY EMAIL NOT SENT | To: @%s | Reason: %s | IP: %s\n",
+            $timestamp,
+            $username,
+            $reason,
             $ip
         );
 
