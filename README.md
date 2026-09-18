@@ -623,7 +623,7 @@ O **Entity Builder** é um assistente visual operacional dentro do Dev-End (`/de
 Recursos implementados:
 
 * **Criação e Edição de Entidades:** Formulário visual unificado para definição e alteração de nome, entidade no singular, slug (imutável na edição), prefixo de ID (imutável na edição), ícone/emoji e descrição da funcionalidade;
-* **Seletor Visual e Catálogo de Emojis / Ícones:** Biblioteca categorizada e interativa de emojis (Gestão & Negócios, Pessoas & Contatos, Vendas & Finanças, TI & Sistemas) com busca em tempo real por termos em português, sugestões rápidas (chips) de uso frequente e preview dinâmico integrado ao input;
+* **Seletor de Emojis / Ícones Padronizado:** Campo de seleção nativo com lista categorizada de emojis em grupos temáticos (Gestão & Negócios, Pessoas & Contatos, Vendas & Finanças, TI, Equipamentos & Segurança) e opção para inserção de emoji customizado, garantindo interface limpa e alinhada aos demais campos do formulário;
 * **Construtor dinâmico de campos:** Suporte a tipos de dados fundamentais com nomenclaturas padronizadas e limpas em português: `Texto Curto` (`string`), `Texto Longo` (`text`), `Número` (`number`), `Data` (`date`), `Seleção` (`select`), `Relação 1:N` (`relation`), `Relação N:N` (`many_to_many`) e `Sim / Não` (`boolean`);
 * **Relações N:N com Convenção Automática:** Configuração simplificada de associações muitos-para-muitos sem necessidade de preenchimento manual do nome do arquivo pivô, adotando a convenção de nomenclatura e geração automática (`{modulo}_{alvo}.csv`);
 * **Controles granulares por campo:** Configuração visual de obrigatoriedade, unicidade e visibilidade na tabela de listagem principal;
