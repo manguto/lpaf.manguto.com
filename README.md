@@ -1189,3 +1189,21 @@ Para analisar todas as funcionalidades atuais e validar implementações (filtro
 * **Auditoria (9 registros)**: Eventos de auditoria em `storage/logs/audit_log.csv` simulando histórico operacional.
 * **Backups**: Snapshot inicial funcional em `storage/backups/` para teste imediato de download e restauração no Dev-End.
 
+
+### Sincronização contínua com o LPAF (Upstream)
+
+Para criar um novo sistema mantendo a capacidade de receber atualizações e correções futuras do motor do LPAF:
+
+1. **Vincule o novo projeto ao seu repositório (`origin`) e ao LPAF (`upstream`):**
+   ```bash
+   git remote set-url origin https://github.com/seu-usuario/meu-novo-sistema.git
+   git remote add upstream https://github.com/manguto/lpaf.manguto.com.git
+   git push -u origin master
+   ```
+2. **Dia a dia:** Seus commits e pushes vão exclusivamente para o seu novo sistema (`origin`).
+3. **Puxar melhorias do LPAF:**
+   ```bash
+   git pull upstream master
+   ```
+
+
