@@ -1125,11 +1125,14 @@ Antes de disponibilizar o LPAF para os usuários finais em ambiente de produçã
 
 ### Carga de dados para testes e demonstração (Seed)
 
-Para analisar todas as funcionalidades atuais e validar implementações futuras (filtros, paginação, integridade referencial 1:N, visão 360°, auditoria e relações N:N), execute o seeder da aplicação:
+Para analisar todas as funcionalidades atuais e validar implementações (filtros, autocomplete, integridade referencial 1:N, visão 360°, auditoria e relações N:N), você pode executar o seeder de duas formas convenientes:
 
-```bash
-php scripts/seed.php
-```
+1. **Diretamente pelo Navegador (1 clique):** Acesse `/dev/modules` logado como Desenvolvedor e clique no botão **🌱 Popular Dados de Demonstração (Seed)**;
+2. **Pela Linha de Comando (CLI):**
+   ```bash
+   php scripts/seed.php
+   ```
+
 
 #### Contas de acesso disponíveis
 

@@ -9,6 +9,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Services\AuditService;
 use App\Services\BackupService;
+use App\Services\SeedService;
 
 final class DevController extends Controller
 {
@@ -98,6 +99,15 @@ final class DevController extends Controller
             'modules' => $modules,
             'stats' => $stats,
         ]);
+    }
+
+    public function seedDatabase(Request $request): void
+    {
+        $userId = $this->user()['id'] ?? 'usr_001';
+        $seedService = new SeedService($this->app);
+        $stats = $seedService->run($userId);
+        Session::flash('message', "Base de demonstração carregada com sucesso! ({$stats['clientes']} clientes, {$stats['produtos']} produtos, {$stats['tags']} etiquetas, {$stats['pedidos']} pedidos e {$stats['avaliacoes']} avaliações).");
+        Response::redirect('/dev/modules');
     }
 
     public function entityBuilder(): void

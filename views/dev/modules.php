@@ -1,13 +1,28 @@
 <a href="<?= url($app, '/dev') ?>" class="back-link">&larr; Voltar para o Dev-End</a>
 
+<?php $flashMessage = \App\Core\Session::flash('message'); ?>
+<?php if (!empty($flashMessage)): ?>
+    <div class="alert alert-success" style="margin-bottom: 1.5rem;">
+        <span><?= e($flashMessage) ?></span>
+    </div>
+<?php endif; ?>
+
 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
     <div>
         <h1>Módulos e Entidades</h1>
         <p class="muted">Acesso direto e gerenciamento declarativo dos módulos da aplicação.</p>
     </div>
-    <a class="btn btn-primary" href="<?= url($app, '/dev/entity-builder') ?>">
-        + Nova Entidade (Entity Builder)
-    </a>
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <form method="post" action="<?= url($app, '/dev/seed') ?>" onsubmit="return confirm('Deseja popular a base com os dados demonstrativos de Catálogo & Vendas?\n\nIsso criará registros realistas e conectados de Clientes, Produtos, Etiquetas, Pedidos e Avaliações.');" style="margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none;">
+            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+            <button type="submit" class="btn btn-secondary" style="border: 1.5px solid #0284c7; color: #0284c7; background: #f0f9ff; font-weight: 600;">
+                🌱 Popular Dados de Demonstração (Seed)
+            </button>
+        </form>
+        <a class="btn btn-primary" href="<?= url($app, '/dev/entity-builder') ?>">
+            + Nova Entidade (Entity Builder)
+        </a>
+    </div>
 </div>
 
 <?php if (empty($modules)): ?>
