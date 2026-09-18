@@ -13,10 +13,18 @@
         <p class="muted">Acesso direto e gerenciamento declarativo dos módulos da aplicação.</p>
     </div>
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
-        <form method="post" action="<?= url($app, '/dev/seed') ?>" onsubmit="return confirm('Deseja popular a base com os dados demonstrativos de Catálogo & Vendas?\n\nIsso criará registros realistas e conectados de Clientes, Produtos, Etiquetas, Pedidos e Avaliações.');" style="margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none;">
+        <?php if (!empty($isDemoInstalled)): ?>
+            <form method="post" action="<?= url($app, '/dev/demo/clear') ?>" onsubmit="return confirm('Deseja realmente remover todos os módulos e registros da demonstração?\n\nIsso restaurará a base para o estado limpo (Clean Slate). Um backup de salvaguarda será gerado automaticamente.');" style="margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none;">
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <button type="submit" class="btn btn-secondary" style="border: 1.5px solid #ef4444; color: #ef4444; background: #fef2f2; font-weight: 600;">
+                    🧹 Limpar Demonstração (Reset)
+                </button>
+            </form>
+        <?php endif; ?>
+        <form method="post" action="<?= url($app, '/dev/seed') ?>" onsubmit="return confirm('Deseja carregar os módulos e dados demonstrativos de Catálogo & Vendas?\n\nIsso criará ou atualizará módulos e registros de Clientes, Produtos, Etiquetas, Pedidos e Avaliações.');" style="margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none;">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <button type="submit" class="btn btn-secondary" style="border: 1.5px solid #0284c7; color: #0284c7; background: #f0f9ff; font-weight: 600;">
-                🌱 Popular Dados de Demonstração (Seed)
+                🌱 <?= !empty($isDemoInstalled) ? 'Recarregar Dados (Seed)' : 'Carregar Demonstração (Seed)' ?>
             </button>
         </form>
         <a class="btn btn-primary" href="<?= url($app, '/dev/entity-builder') ?>">
@@ -26,8 +34,23 @@
 </div>
 
 <?php if (empty($modules)): ?>
-    <div class="card">
-        <p class="muted">Nenhum módulo encontrado no diretório <code>modules/</code>.</p>
+    <div class="card" style="padding: 3rem 1.5rem; text-align: center; border: 2px dashed #cbd5e1; background: #f8fafc; border-radius: 12px; margin-top: 1rem;">
+        <div style="font-size: 3rem; margin-bottom: 0.75rem;">✨</div>
+        <h2 style="font-size: 1.4rem; color: #0f172a; margin-bottom: 0.5rem;">Nenhum Módulo Cadastrado (Clean Slate)</h2>
+        <p class="muted" style="max-width: 540px; margin: 0 auto 1.75rem; font-size: 0.95rem; line-height: 1.5;">
+            O diretório <code>modules/</code> está 100% limpo e pronto para suas regras de negócio. Crie sua primeira entidade no construtor visual ou carregue os módulos de demonstração para explorar o framework.
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a class="btn btn-primary" href="<?= url($app, '/dev/entity-builder') ?>" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;">
+                + Criar Primeira Entidade (Entity Builder)
+            </a>
+            <form method="post" action="<?= url($app, '/dev/seed') ?>" onsubmit="return confirm('Deseja carregar o pacote de demonstração de Catálogo & Vendas?\n\nIsso criará os módulos de Clientes, Produtos, Etiquetas, Pedidos e Avaliações com dados conectados.');" style="margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none;">
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <button type="submit" class="btn btn-secondary" style="border: 1.5px solid #0284c7; color: #0284c7; background: #ffffff; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 600;">
+                    🌱 Carregar Módulos de Demonstração (Catálogo & Vendas)
+                </button>
+            </form>
+        </div>
     </div>
 <?php else: ?>
     <!-- Barra de Acesso e Filtro Rápido -->

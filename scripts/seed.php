@@ -40,14 +40,15 @@ echo "\n" . str_repeat('=', 78) . "\n";
 echo "  LPAF - PHP Admin Framework | Carga de Dados de Teste & Demonstração\n";
 echo str_repeat('=', 78) . "\n\n";
 
-echo "Populando catálogo e vendas demonstrativas...\n";
+echo "Instalando módulos do preset de demonstração e populando catálogo e vendas...\n";
 
 $service = new SeedService($app);
 $stats = $service->run('usr_001');
 
 echo "\n" . str_repeat('=', 78) . "\n";
-echo "  SUCESSO: Base de dados populada com dados intuitivos de Catálogo & Vendas!\n";
+echo "  SUCESSO: Base de dados e módulos de demonstração ativados com sucesso!\n";
 echo str_repeat('=', 78) . "\n";
-echo "  Módulos carregados: Clientes ({$stats['clientes']}), Produtos ({$stats['produtos']}), Etiquetas ({$stats['tags']}), Pedidos ({$stats['pedidos']}), Avaliações ({$stats['avaliacoes']})\n";
+echo "  Módulos em modules/: {$stats['modules']} módulos de modelo instalados/verificados.\n";
+echo "  Registros carregados: Clientes ({$stats['clientes']}), Produtos ({$stats['produtos']}), Etiquetas ({$stats['tags']}), Pedidos ({$stats['pedidos']}), Avaliações ({$stats['avaliacoes']})\n";
 echo "  Tabela Pivô N:N: {$stats['produto_tags']} associações em storage/data/produto_tags.csv\n";
 echo "  Snapshot de Backup: {$stats['backup_id']}\n\n";

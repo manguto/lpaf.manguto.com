@@ -41,6 +41,11 @@ final class CsvStorage
     {
         return is_file($this->path($file));
     }
+    public function delete(string $file): bool
+    {
+        $path = $this->path($file);
+        return is_file($path) ? unlink($path) : false;
+    }
     public function path(string $file): string
     {
         return str_contains($file, 'audit_log') ? $this->config->get('storage_logs') . '/' . basename($file) : $this->config->get('storage_data') . '/' . basename($file);

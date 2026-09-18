@@ -95,9 +95,13 @@ final class DevController extends Controller
             ];
         }
 
+        $seedService = new SeedService($this->app);
+        $isDemoInstalled = $seedService->isDemoInstalled('ecommerce');
+
         $this->view('dev/modules', [
             'modules' => $modules,
             'stats' => $stats,
+            'isDemoInstalled' => $isDemoInstalled,
         ]);
     }
 
@@ -106,7 +110,18 @@ final class DevController extends Controller
         $userId = $this->user()['id'] ?? 'usr_001';
         $seedService = new SeedService($this->app);
         $stats = $seedService->run($userId);
-        Session::flash('message', "Base de demonstração carregada com sucesso! ({$stats['clientes']} clientes, {$stats['produtos']} produtos, {$stats['tags']} etiquetas, {$stats['pedidos']} pedidos e {$stats['avaliacoes']} avaliações).");
+        Session::flash('message', "Módulos de modelo e dados de demonstração carregados com sucesso! ({$stats['modules']} módulos ativados: {$stats['clientes']} clientes, {$stats['produtos']} produtos, {$stats['tags']} etiquetas, {$stats['pedidos']} pedidos e {$stats['avaliacoes']} avaliações).");
+        Response::redirect('/dev/modules');
+    }
+
+    public function clearDemo(Request $request): void
+    {
+        $userId = $this->user()['id'] ?? 'usr_001';
+        $seedService = new SeedService($this->app);
+        $stats = $seedService->clearDemo($userId);
+        $modsCount = count($stats['modules_removed']);
+        $csvsCount = count($stats['csvs_removed']);
+        Session::flash('message', "Demonstração removida com sucesso! ({$modsCount} módulos e {$csvsCount} arquivos CSV removidos). A base voltou ao estado limpo (Clean Slate).");
         Response::redirect('/dev/modules');
     }
 

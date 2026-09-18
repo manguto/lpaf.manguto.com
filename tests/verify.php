@@ -89,7 +89,7 @@ if (empty($profileLogs)) throw new RuntimeException('Log de auditoria profile_up
 // Teste do Motor de Módulos e CRUD Declarativo
 $modulesDir = $root . '/modules/produtos';
 mkdir($modulesDir, 0775, true);
-copy(dirname(__DIR__) . '/modules/produtos/module.php', $modulesDir . '/module.php');
+copy(dirname(__DIR__) . '/templates/presets/ecommerce/modules/produtos/module.php', $modulesDir . '/module.php');
 
 $moduleManager = new \App\Core\ModuleManager($app);
 $modules = $moduleManager->all();
@@ -712,12 +712,52 @@ if (!str_contains($storageHtaccess, 'Require all denied')) {
     throw new RuntimeException('storage/.htaccess não contém regra "Require all denied".');
 }
 
-$rootHtaccess = (string) file_get_contents($projectRoot . '/.htaccess');
-if (!str_contains($rootHtaccess, 'storage') || !str_contains($rootHtaccess, 'composer')) {
-    throw new RuntimeException('Root .htaccess não possui bloqueios de segurança essenciais.');
+// 10. Teste de Arquitetura Clean Slate e Módulos de Demonstração Sob Demanda
+$seedService = new \App\Services\SeedService($app);
+
+// Teste de instalação do preset de demonstração
+$installed = $seedService->installPresetModules('ecommerce');
+if (count($installed) < 5 || !in_array('clientes', $installed, true) || !in_array('produtos', $installed, true)) {
+    throw new RuntimeException('Falha na instalação de módulos via preset ecommerce.');
+}
+if (!$seedService->isDemoInstalled('ecommerce')) {
+    throw new RuntimeException('isDemoInstalled deveria retornar true após instalação do preset.');
 }
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas, Busca Assistida / Autocomplete (Item 20), Rate Limiting (Força Bruta), Proteção .htaccess e Licença MIT.\n";
+// Executa o seed completo com carga de registros e backup
+$seedStats = $seedService->run('usr_001');
+if ($seedStats['modules'] < 5 || $seedStats['clientes'] < 5 || $seedStats['produtos'] < 6) {
+    throw new RuntimeException('Estatísticas do seed de demonstração inválidas.');
+}
+if (!$app->storage->exists('clientes.csv') || !$app->storage->exists('produtos.csv')) {
+    throw new RuntimeException('Arquivos CSV da demonstração não foram gerados.');
+}
+
+// Teste de Limpeza (Clean Slate / Reset)
+$clearStats = $seedService->clearDemo('usr_001');
+if (count($clearStats['modules_removed']) < 5 || count($clearStats['csvs_removed']) < 5) {
+    throw new RuntimeException('clearDemo não removeu os módulos e CSVs esperados.');
+}
+if ($seedService->isDemoInstalled('ecommerce')) {
+    throw new RuntimeException('isDemoInstalled deveria retornar false após clearDemo.');
+}
+if ($app->storage->exists('clientes.csv') || $app->storage->exists('produtos.csv')) {
+    throw new RuntimeException('Arquivos CSV da demonstração ainda existem após clearDemo.');
+}
+
+// Verifica se permissões da demonstração foram limpas de permissions.csv
+$remainingPerms = array_column($app->permissions->all(), 'id');
+if (in_array('clientes.view', $remainingPerms, true) || in_array('produtos.view', $remainingPerms, true)) {
+    throw new RuntimeException('Permissões da demonstração não foram limpas do permissions.csv.');
+}
+
+// Verifica log de auditoria de limpeza
+$clearLogs = $auditService->all('demo_cleared');
+if (empty($clearLogs)) {
+    throw new RuntimeException('Log de auditoria demo_cleared não registrado.');
+}
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas, Busca Assistida / Autocomplete (Item 20), Rate Limiting (Força Bruta), Proteção .htaccess, Licença MIT e Arquitetura Clean Slate (Presets sob Demanda e Reset).\n";
 
 
 

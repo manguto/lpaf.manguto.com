@@ -11,12 +11,165 @@ final class SeedService
     public function __construct(private Application $app) {}
 
     /**
-     * Popula a base de dados com o domínio demonstrativo intuitivo de Catálogo & Vendas.
-     *
-     * @return array{clientes: int, produtos: int, tags: int, produto_tags: int, pedidos: int, avaliacoes: int, backup_id: string}
+     * Verifica se os módulos de modelo/demonstração estão instalados atualmente.
      */
-    public function run(?string $userId = null): array
+    public function isDemoInstalled(string $preset = 'ecommerce'): bool
     {
+        $modulesRoot = $this->app->config->get('root') . '/modules';
+        return is_file($modulesRoot . '/clientes/module.php') || is_file($modulesRoot . '/produtos/module.php');
+    }
+
+    /**
+     * Copia os módulos de template/preset para o diretório de módulos da aplicação.
+     *
+     * @return string[] Lista de slugs dos módulos instalados
+     */
+    public function installPresetModules(string $preset = 'ecommerce'): array
+    {
+        $presetModulesDir = $this->app->config->get('root') . '/templates/presets/' . $preset . '/modules';
+        if (!is_dir($presetModulesDir)) {
+            $fallback = dirname(__DIR__, 2) . '/templates/presets/' . $preset . '/modules';
+            if (is_dir($fallback)) {
+                $presetModulesDir = $fallback;
+            } else {
+                return [];
+            }
+        }
+        $modulesRoot = $this->app->config->get('root') . '/modules';
+
+        $installed = [];
+        $entries = scandir($presetModulesDir) ?: [];
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $srcDir = $presetModulesDir . '/' . $entry;
+            if (!is_dir($srcDir)) {
+                continue;
+            }
+
+            $dstDir = $modulesRoot . '/' . $entry;
+            if (!is_dir($dstDir)) {
+                mkdir($dstDir, 0775, true);
+            }
+
+            $files = scandir($srcDir) ?: [];
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') {
+                    continue;
+                }
+                $srcFile = $srcDir . '/' . $file;
+                $dstFile = $dstDir . '/' . $file;
+                if (is_file($srcFile)) {
+                    copy($srcFile, $dstFile);
+                }
+            }
+
+            $installed[] = $entry;
+        }
+
+        return $installed;
+    }
+
+    /**
+     * Remove com salvaguarda de backup todos os módulos e registros da demonstração, restaurando a base limpa (Clean Slate).
+     *
+     * @return array{modules_removed: string[], csvs_removed: string[], backup_id: string}
+     */
+    public function clearDemo(?string $userId = null, string $preset = 'ecommerce'): array
+    {
+        $storage = $this->app->storage;
+
+        // 1. Snapshot automático de salvaguarda antes de limpar
+        $backupService = new BackupService($this->app);
+        $backupId = $backupService->create('pre_clear_demo_' . $preset, $userId ?? 'usr_001');
+
+        // 2. Módulos do preset a remover
+        $demoModules = ['clientes', 'produtos', 'tags', 'pedidos', 'avaliacoes'];
+        $modulesRoot = $this->app->config->get('root') . '/modules';
+        $removedModules = [];
+
+        foreach ($demoModules as $mod) {
+            $modDir = $modulesRoot . '/' . $mod;
+            if (is_dir($modDir)) {
+                $files = glob($modDir . '/*') ?: [];
+                foreach ($files as $file) {
+                    if (is_file($file)) {
+                        @unlink($file);
+                    }
+                }
+                @rmdir($modDir);
+                $removedModules[] = $mod;
+            }
+        }
+
+        // 3. Arquivos CSV demonstrativos a remover
+        $demoCsvs = ['clientes.csv', 'produtos.csv', 'tags.csv', 'produto_tags.csv', 'pedidos.csv', 'avaliacoes.csv'];
+        $removedCsvs = [];
+        foreach ($demoCsvs as $csv) {
+            if ($storage->exists($csv)) {
+                $storage->delete($csv);
+                $removedCsvs[] = $csv;
+            }
+        }
+
+        // 4. Limpeza de permissões relacionadas aos módulos de demonstração
+        $demoPermPrefixes = ['clientes', 'produtos', 'tags', 'pedidos', 'avaliacoes'];
+        if ($storage->exists('permissions.csv')) {
+            $allPerms = $storage->read('permissions.csv', ['id', 'name', 'description']);
+            $filteredPerms = array_values(array_filter($allPerms, function ($p) use ($demoPermPrefixes) {
+                $id = $p['id'] ?? '';
+                foreach ($demoPermPrefixes as $prefix) {
+                    if (str_starts_with($id, $prefix . '.')) {
+                        return false;
+                    }
+                }
+                return true;
+            }));
+            $storage->write('permissions.csv', ['id', 'name', 'description'], $filteredPerms);
+        }
+
+        if ($storage->exists('role_permissions.csv')) {
+            $allRolePerms = $storage->read('role_permissions.csv', ['role_id', 'permission_id']);
+            $filteredRolePerms = array_values(array_filter($allRolePerms, function ($rp) use ($demoPermPrefixes) {
+                $id = $rp['permission_id'] ?? '';
+                foreach ($demoPermPrefixes as $prefix) {
+                    if (str_starts_with($id, $prefix . '.')) {
+                        return false;
+                    }
+                }
+                return true;
+            }));
+            $storage->write('role_permissions.csv', ['role_id', 'permission_id'], $filteredRolePerms);
+        }
+
+        // 5. Auditoria e Recarga do Gerenciador de Módulos
+        $auditService = new AuditService($storage);
+        $auditService->log('demo_cleared', $userId ?? 'usr_001', "preset={$preset}; modulos=" . implode(',', $removedModules));
+
+        $this->app->modules->reload();
+
+        return [
+            'modules_removed' => $removedModules,
+            'csvs_removed' => $removedCsvs,
+            'backup_id' => $backupId,
+        ];
+    }
+
+    /**
+     * Popula a base de dados com o domínio demonstrativo intuitivo de Catálogo & Vendas,
+     * garantindo a instalação prévia dos módulos de modelo a partir dos templates.
+     *
+     * @return array{modules: int, clientes: int, produtos: int, tags: int, produto_tags: int, pedidos: int, avaliacoes: int, backup_id: string}
+     */
+    public function run(?string $userId = null, string $preset = 'ecommerce'): array
+    {
+        // Garante que os módulos do preset de demonstração estejam presentes
+        $installedModules = $this->installPresetModules($preset);
+        $this->app->modules->reload();
+        $this->app->modules->ensurePermissions();
+
         $storage = $this->app->storage;
         $now = date('c');
         $yesterday = date('c', strtotime('-1 day'));
@@ -569,6 +722,7 @@ final class SeedService
         $backupId = $backupService->create('carga_demonstracao', $userId ?? 'usr_001');
 
         return [
+            'modules' => count($installedModules),
             'clientes' => count($clientes),
             'produtos' => count($produtos),
             'tags' => count($tags),

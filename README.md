@@ -132,7 +132,12 @@ Regras de negócio relevantes deverão utilizar Service.
 │
 ├── config/
 │
-├── modules/
+├── modules/ (Clean Slate: vazio no repositório, apenas com .gitkeep)
+│
+├── templates/
+│   └── presets/
+│       └── ecommerce/
+│           └── modules/ (módulos de modelo versionados para carga sob demanda)
 │
 ├── routes/
 │   ├── web.php
@@ -1057,11 +1062,12 @@ Status do roadmap:
 21. [x] Proteção contra Força Bruta & Rate Limiting no Login (`App\Core\RateLimiter`, bloqueio temporário de 5 minutos após 5 falhas, resolução segura de IP e feedback com contador regressivo)
 22. [x] Blindagem e Proteção de Arquivos Internos (`storage/.htaccess` com `Require all denied`, proteção de dotfiles e bloqueio de acesso a diretórios internos no `.htaccess` raiz)
 23. [x] Licença de Software Formalizada (distribuição sob licença MIT, arquivo `LICENSE` na raiz do repositório)
-24. [ ] Paginação e Ordenação nas Listagens (controle dinâmico de registros por página e ordenação clicável por coluna no CRUD)
-25. [ ] Exportação e Importação de Dados CSV (exportação de listagens com filtros ativos e carga em lote com validação prévia de colunas)
-26. [ ] Notificações e Alertas Visuais Flutuantes (sistema leve de *toast notifications* em Vanilla JS)
-27. [ ] Logs Avançados de Auditoria por Módulo (rastreamento detalhado de diffs antes/depois nas alterações do CRUD declarativo)
-28. [ ] Atributos Extras em Tabelas Pivô N:N (metadados adicionais como status ou papel diretamente na linha de junção)
+24. [x] Arquitetura Clean Slate & Módulos de Modelo Sob Demanda (diretório `modules/` 100% limpo no repositório com apenas `.gitkeep`, eliminando acoplamentos e prevenindo conflitos de merge em atualizações `upstream`; templates/presets de demonstração isolados em `templates/presets/ecommerce/modules/`; instalação automática sob demanda pelo Dev-End ou CLI e botão de limpeza total com 1 clique e salvaguarda automática)
+25. [ ] Paginação e Ordenação nas Listagens (controle dinâmico de registros por página e ordenação clicável por coluna no CRUD)
+26. [ ] Exportação e Importação de Dados CSV (exportação de listagens com filtros ativos e carga em lote com validação prévia de colunas)
+27. [ ] Notificações e Alertas Visuais Flutuantes (sistema leve de *toast notifications* em Vanilla JS)
+28. [ ] Logs Avançados de Auditoria por Módulo (rastreamento detalhado de diffs antes/depois nas alterações do CRUD declarativo)
+29. [ ] Atributos Extras em Tabelas Pivô N:N (metadados adicionais como status ou papel diretamente na linha de junção)
 
 ## 41. Contribuições e Manutenção da Documentação
 
@@ -1157,15 +1163,20 @@ Antes de disponibilizar o LPAF para os usuários finais em ambiente de produçã
    - Embora o LPAF permita gerar e baixar backups via painel Dev-End, recomenda-se configurar uma rotina externa (cron job) para cópia periódica do diretório `storage/data/` para armazenamento seguro off-site.
 
 
-### Carga de dados para testes e demonstração (Seed)
+### Arquitetura Clean Slate & Carga de Demonstração Sob Demanda (Seed)
 
-Para analisar todas as funcionalidades atuais e validar implementações (filtros, autocomplete, integridade referencial 1:N, visão 360°, auditoria e relações N:N), você pode executar o seeder de duas formas convenientes:
+O LPAF adota o princípio de **Clean Slate** (Folha em Branco): o repositório base é distribuído com o diretório `modules/` 100% limpo (apenas com `.gitkeep`), sem pré-carregar regras de negócio ou tabelas CSV fictícias de fábrica. Isso garante que a ferramenta permaneça despoluída para qualquer domínio que você queira construir e elimina potenciais conflitos de merge no Git ao sincronizar com o `upstream`.
 
-1. **Diretamente pelo Navegador (1 clique):** Acesse `/dev/modules` logado como Desenvolvedor e clique no botão **🌱 Popular Dados de Demonstração (Seed)**;
+Os módulos de modelo são mantidos isolados em um diretório de presets (`templates/presets/ecommerce/modules/`) e só são instalados e populados quando você solicitar explicitamente para fins de exploração, testes ou estudo:
+
+1. **Pela Interface Web do Dev-End:** Acesse `/dev/modules` logado como Desenvolvedor:
+   * Se a aplicação estiver limpa, o card vazio oferecerá o botão **🌱 Carregar Módulos de Demonstração (Seed)**;
+   * Se a demonstração estiver instalada, você terá acesso ao botão **🧹 Limpar Demonstração (Reset)**, que remove os módulos e registros da demonstração com 1 clique (gerando um backup de salvaguarda automático pré-limpeza);
 2. **Pela Linha de Comando (CLI):**
    ```bash
    php scripts/seed.php
    ```
+   O script verifica a presença dos módulos de modelo, instala os arquivos a partir do preset e popula a base de dados com registros realistas e conectados.
 
 
 #### Contas de acesso disponíveis
