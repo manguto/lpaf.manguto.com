@@ -406,7 +406,7 @@ O sistema conta com suporte completo a **Relacionamentos N:N (Muitos para Muitos
 
 * **Tabelas Pivô Dedicadas em CSV:** As associações são armazenadas exclusivamente em arquivos CSV intermediários (ex: `projeto_equipamentos.csv` ou padrão `{pai}_{destino}.csv`), estruturados com `id`, `created_at`, `{parent_key}` e `{target_key}`, mantendo os CSVs principais das entidades limpos e sem quebra da primeira forma normal;
 * **Configuração Declarativa em `module.php`:** Definição simples via tipo `many_to_many`, indicando o módulo de destino (`target`), campo descritivo (`display`), arquivo pivô opcional (`pivot_file`), e chaves (`parent_key`, `target_key`);
-* **Seleção Visual no Entity Builder:** O Dev-End permite selecionar o tipo `Relação N:N`, selecionar o módulo relacionado e opcionalmente personalizar o nome do arquivo pivô CSV;
+* **Seleção Visual no Entity Builder:** O Dev-End permite selecionar o tipo `Relação N:N` e indicar o módulo relacionado, com a tabela pivô intermediária sendo gerenciada de forma transparente e automática por convenção do framework (`{pai}_{destino}.csv`);
 * **Interface de Associação Confortável com Busca em Tempo Real (`form.php`):** Formulários de cadastro e edição renderizam um painel contrastado de cartões/checkboxes com filtro de pesquisa instantâneo via JavaScript e botões "Marcar Todos / Desmarcar Todos";
 * **Listagem Inteligente (`index.php`):** Colunas N:N exibem badges dos primeiros itens associados acompanhados de contador cumulativo (`+N`) para preservar a densidade visual;
 * **Detalhamento e Links Diretos (`show.php`):** Na tela de detalhes da entidade, os registros associados são renderizados como badges clicáveis com atalho imediato para o registro correspondente;

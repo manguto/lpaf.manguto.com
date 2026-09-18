@@ -307,7 +307,7 @@ main {
                                         </select>
                                     </div>
                                     <div class="col-options-many-to-many" style="display: <?= $isManyToMany ? 'block' : 'none' ?>;">
-                                        <select name="fields[<?= $idx ?>][relation_target]" <?= $isManyToMany ? 'required' : 'disabled' ?> style="margin-bottom: 0.35rem;">
+                                        <select name="fields[<?= $idx ?>][relation_target]" <?= $isManyToMany ? 'required' : 'disabled' ?>>
                                             <option value="">Vincular a...</option>
                                             <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
                                                 <?php if ($modSlug !== ($module['slug'] ?? '')): ?>
@@ -317,7 +317,9 @@ main {
                                                 <?php endif; ?>
                                             <?php endforeach; ?>
                                         </select>
-                                        <input type="text" name="fields[<?= $idx ?>][pivot_file]" value="<?= e($pivotFile) ?>" placeholder="Arquivo pivô (ex: <?= e($module['slug'] ?? 'modulo') ?>_itens.csv)" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" title="Opcional: nome do arquivo CSV pivô" <?= $isManyToMany ? '' : 'disabled' ?>>
+                                        <?php if (!empty($pivotFile)): ?>
+                                            <input type="hidden" name="fields[<?= $idx ?>][pivot_file]" value="<?= e($pivotFile) ?>" <?= $isManyToMany ? '' : 'disabled' ?>>
+                                        <?php endif; ?>
                                     </div>
                                     <span class="cell-muted-dash" style="display: <?= (!$isSelect && !$isRelation && !$isManyToMany) ? 'block' : 'none' ?>;">—</span>
                                 </td>
@@ -385,7 +387,7 @@ main {
                                     </select>
                                 </div>
                                 <div class="col-options-many-to-many" style="display: none;">
-                                    <select name="fields[0][relation_target]" style="margin-bottom: 0.35rem;" disabled>
+                                    <select name="fields[0][relation_target]" disabled>
                                         <option value="">Vincular a...</option>
                                         <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
                                             <option value="<?= e($modSlug) ?>">
@@ -393,7 +395,6 @@ main {
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <input type="text" name="fields[0][pivot_file]" placeholder="Arquivo pivô (ex: pivot.csv)" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" title="Opcional: nome do arquivo CSV pivô" disabled>
                                 </div>
                                 <span class="cell-muted-dash">—</span>
                             </td>
@@ -662,11 +663,10 @@ function addFieldRow() {
                 </select>
             </div>
             <div class="col-options-many-to-many" style="display: none;">
-                <select name="fields[${idx}][relation_target]" style="margin-bottom: 0.35rem;" disabled>
+                <select name="fields[${idx}][relation_target]" disabled>
                     <option value="">Vincular a...</option>
                     ${relationOptionsHtml.replace('<option value="">Vincular a...</option>', '')}
                 </select>
-                <input type="text" name="fields[${idx}][pivot_file]" placeholder="Arquivo pivô (ex: pivot.csv)" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" title="Opcional: nome do arquivo CSV pivô" disabled>
             </div>
             <span class="cell-muted-dash">—</span>
         </td>
