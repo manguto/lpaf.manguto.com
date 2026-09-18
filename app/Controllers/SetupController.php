@@ -32,8 +32,16 @@ final class SetupController extends Controller
             View::render('auth/setup', ['error' => 'O login não pode ser um e-mail. Utilize entre 3 e 30 caracteres (letras, números, ponto, traço ou sublinhado).', 'app' => $this->app, 'csrf' => $_SESSION['_csrf']]);
             return;
         }
-        if ($name === '' || $username === '' || strlen($password) < 8 || $password !== (string) $request->input('password_confirmation')) {
-            View::render('auth/setup', ['error' => 'Preencha os campos e use uma senha com pelo menos 8 caracteres.', 'app' => $this->app, 'csrf' => $_SESSION['_csrf']]);
+        if ($name === '' || $username === '') {
+            View::render('auth/setup', ['error' => 'Preencha todos os campos obrigatórios.', 'app' => $this->app, 'csrf' => $_SESSION['_csrf']]);
+            return;
+        }
+        if ($password === '') {
+            View::render('auth/setup', ['error' => 'Informe uma senha de acesso.', 'app' => $this->app, 'csrf' => $_SESSION['_csrf']]);
+            return;
+        }
+        if ($password !== (string) $request->input('password_confirmation')) {
+            View::render('auth/setup', ['error' => 'A confirmação de senha não confere.', 'app' => $this->app, 'csrf' => $_SESSION['_csrf']]);
             return;
         }
         (new SetupService($this->app))->install((string) $request->input('app_name'), $name, $username, $password);

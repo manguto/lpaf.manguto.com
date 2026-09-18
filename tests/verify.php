@@ -68,9 +68,9 @@ if (!$currentUser) throw new RuntimeException('Usuário usr_001 não encontrado.
 $userRoles = $app->roles->forUser('usr_001');
 if (empty($userRoles) || $userRoles[0]['id'] !== 'role_dev') throw new RuntimeException('Falha em roles->forUser().');
 
-// Simula atualização de nome e troca de senha
+// Simula atualização de nome e troca de senha (livre de restrições de complexidade)
 $newName = 'Administrador Atualizado';
-$newPass = 'nova-senha-segura-2026';
+$newPass = '123';
 $app->users->update('usr_001', [
     'name' => $newName,
     'password_hash' => password_hash($newPass, PASSWORD_DEFAULT),

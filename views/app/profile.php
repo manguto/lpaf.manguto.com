@@ -72,7 +72,7 @@ if (!empty($profileUser['name'])) {
 
             <div>
                 <label for="new_password">Nova Senha:</label>
-                <input type="password" id="new_password" name="new_password" placeholder="Mínimo de 8 caracteres" autocomplete="new-password">
+                <input type="password" id="new_password" name="new_password" placeholder="Digite a nova senha" autocomplete="new-password">
             </div>
 
             <div>

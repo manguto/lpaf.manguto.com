@@ -55,8 +55,8 @@ final class ProfileController extends Controller
                 Response::redirect('/profile');
             }
 
-            if (strlen($newPassword) < 8) {
-                Session::flash('error', 'A nova senha deve possuir no mínimo 8 caracteres.');
+            if ($newPassword === '') {
+                Session::flash('error', 'A nova senha não pode ficar em branco.');
                 Response::redirect('/profile');
             }
 

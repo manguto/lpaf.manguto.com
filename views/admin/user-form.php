@@ -38,7 +38,7 @@ if ($edit) {
 
         <div style="margin-top: 1rem;">
             <label for="password">Senha <?= $edit ? '<span class="muted" style="font-weight: normal;">(deixe em branco para não alterar)</span>' : '' ?></label>
-            <input type="password" id="password" name="password" minlength="8" placeholder="Mínimo 8 caracteres" <?= $edit ? '' : 'required' ?>>
+            <input type="password" id="password" name="password" placeholder="Digite a senha" <?= $edit ? '' : 'required' ?>>
         </div>
 
         <?php if ($edit): ?>

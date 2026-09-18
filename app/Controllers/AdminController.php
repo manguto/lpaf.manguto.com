@@ -47,7 +47,8 @@ final class AdminController extends Controller
     public function updateUser(Request $request, array $params): void
     {
         $data = ['name' => trim((string) $request->input('name')), 'active' => $request->input('active') ? '1' : '0', 'updated_at' => date('c')];
-        if (strlen((string) $request->input('password')) >= 8) $data['password_hash'] = password_hash((string) $request->input('password'), PASSWORD_DEFAULT);
+        $newPass = (string) $request->input('password');
+        if ($newPass !== '') $data['password_hash'] = password_hash($newPass, PASSWORD_DEFAULT);
         $this->app->users->update($params['id'], $data);
         $rel = new \App\Repositories\RelationRepository($this->app->storage, 'user_roles.csv', ['user_id', 'role_id']);
         $rows = array_values(array_filter($rel->all(), fn($row) => $row['user_id'] !== $params['id']));

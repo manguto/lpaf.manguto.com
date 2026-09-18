@@ -30,12 +30,12 @@
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
             <div>
-                <label for="password">Senha (mínimo 8 dígitos)</label>
-                <input type="password" id="password" name="password" minlength="8" placeholder="••••••••" required>
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
             </div>
             <div>
                 <label for="password_confirmation">Confirmar Senha</label>
-                <input type="password" id="password_confirmation" name="password_confirmation" minlength="8" placeholder="••••••••" required>
+                <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Repita a senha" required>
             </div>
         </div>
 
