@@ -33,8 +33,14 @@ final class AdminController extends Controller
             \App\Core\Session::flash('error', 'Este login já está cadastrado.');
             Response::redirect('/admin/users/create');
         }
+        $password = (string) $request->input('password');
+        $policyError = (new \App\Services\PasswordPolicyService($this->app))->validate($password);
+        if ($policyError !== null) {
+            \App\Core\Session::flash('error', $policyError);
+            Response::redirect('/admin/users/create');
+        }
         $now = date('c');
-        $user = $this->app->users->insert(['id' => $this->app->users->nextId(), 'name' => trim((string) $request->input('name')), 'username' => $username, 'password_hash' => password_hash((string) $request->input('password'), PASSWORD_DEFAULT), 'active' => '1', 'created_at' => $now, 'updated_at' => $now]);
+        $user = $this->app->users->insert(['id' => $this->app->users->nextId(), 'name' => trim((string) $request->input('name')), 'username' => $username, 'password_hash' => password_hash($password, PASSWORD_DEFAULT), 'active' => '1', 'created_at' => $now, 'updated_at' => $now]);
         $relations = new \App\Repositories\RelationRepository($this->app->storage, 'user_roles.csv', ['user_id', 'role_id']);
         foreach ($this->allowedRoles((array) $request->input('roles', [])) as $role) $relations->add(['user_id' => $user['id'], 'role_id' => $role]);
         (new AuditService($this->app->storage))->log('user_created', $this->user()['id'], $user['id']);
@@ -48,7 +54,14 @@ final class AdminController extends Controller
     {
         $data = ['name' => trim((string) $request->input('name')), 'active' => $request->input('active') ? '1' : '0', 'updated_at' => date('c')];
         $newPass = (string) $request->input('password');
-        if ($newPass !== '') $data['password_hash'] = password_hash($newPass, PASSWORD_DEFAULT);
+        if ($newPass !== '') {
+            $policyError = (new \App\Services\PasswordPolicyService($this->app))->validate($newPass);
+            if ($policyError !== null) {
+                \App\Core\Session::flash('error', $policyError);
+                Response::redirect('/admin/users/' . $params['id'] . '/edit');
+            }
+            $data['password_hash'] = password_hash($newPass, PASSWORD_DEFAULT);
+        }
         $this->app->users->update($params['id'], $data);
         $rel = new \App\Repositories\RelationRepository($this->app->storage, 'user_roles.csv', ['user_id', 'role_id']);
         $rows = array_values(array_filter($rel->all(), fn($row) => $row['user_id'] !== $params['id']));

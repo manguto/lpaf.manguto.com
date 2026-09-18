@@ -9,6 +9,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Services\AuditService;
 use App\Services\BackupService;
+use App\Services\PasswordPolicyService;
 use App\Services\SeedService;
 
 final class DevController extends Controller
@@ -123,6 +124,32 @@ final class DevController extends Controller
         $csvsCount = count($stats['csvs_removed']);
         Session::flash('message', "Demonstração removida com sucesso! ({$modsCount} módulos e {$csvsCount} arquivos CSV removidos). A base voltou ao estado limpo (Clean Slate).");
         Response::redirect('/dev/modules');
+    }
+
+    public function passwordPolicy(Request $request): void
+    {
+        $service = new PasswordPolicyService($this->app);
+        $this->view('dev/password-policy', [
+            'policy' => $service->getPolicy(),
+            'rules' => $service->getRulesSummary(),
+        ]);
+    }
+
+    public function updatePasswordPolicy(Request $request): void
+    {
+        $service = new PasswordPolicyService($this->app);
+        $userId = $this->user()['id'] ?? null;
+        $service->updatePolicy([
+            'enabled' => $request->input('enabled'),
+            'min_length' => $request->input('min_length'),
+            'require_uppercase' => $request->input('require_uppercase'),
+            'require_lowercase' => $request->input('require_lowercase'),
+            'require_numbers' => $request->input('require_numbers'),
+            'require_symbols' => $request->input('require_symbols'),
+        ], $userId);
+
+        Session::flash('message', 'Configurações de política de senhas atualizadas com sucesso.');
+        Response::redirect('/dev/password-policy');
     }
 
     public function entityBuilder(): void

@@ -757,7 +757,67 @@ if (empty($clearLogs)) {
     throw new RuntimeException('Log de auditoria demo_cleared não registrado.');
 }
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas, Busca Assistida / Autocomplete (Item 20), Rate Limiting (Força Bruta), Proteção .htaccess, Licença MIT e Arquitetura Clean Slate (Presets sob Demanda e Reset).\n";
+// 11. Teste de Governança de Política de Senhas no Dev-End
+$policyService = new \App\Services\PasswordPolicyService($app);
+
+// Modo Livre (desativado por padrão): aceita qualquer senha
+if ($policyService->validate('1') !== null || $policyService->validate('123') !== null) {
+    throw new RuntimeException('Modo livre da política de senhas deveria aceitar qualquer senha.');
+}
+
+// Ativa a política com critérios configurados
+$policyService->updatePolicy([
+    'enabled' => '1',
+    'min_length' => '8',
+    'require_uppercase' => '1',
+    'require_lowercase' => '1',
+    'require_numbers' => '1',
+    'require_symbols' => '1',
+], 'usr_001');
+
+$activePolicy = $policyService->getPolicy();
+if (!$activePolicy['enabled'] || $activePolicy['min_length'] !== 8 || !$activePolicy['require_uppercase']) {
+    throw new RuntimeException('Falha na persistência da política de senhas.');
+}
+
+// Testa reprovação de senhas que não atendem aos critérios
+if ($policyService->validate('curta') === null) {
+    throw new RuntimeException('Deveria reprovar senha com tamanho menor que 8.');
+}
+if ($policyService->validate('semnumero!') === null) {
+    throw new RuntimeException('Deveria reprovar senha sem números.');
+}
+if ($policyService->validate('semmaiuscula1!') === null) {
+    throw new RuntimeException('Deveria reprovar senha sem maiúsculas.');
+}
+if ($policyService->validate('SEMMINUSCULA1!') === null) {
+    throw new RuntimeException('Deveria reprovar senha sem minúsculas.');
+}
+if ($policyService->validate('SemSimbolo123') === null) {
+    throw new RuntimeException('Deveria reprovar senha sem símbolos.');
+}
+
+// Testa aprovação de senha que atende a todos os critérios
+if ($policyService->validate('SenhaForte@2026') !== null) {
+    throw new RuntimeException('Deveria aprovar senha forte e válida.');
+}
+
+// Verifica log de auditoria
+$policyLogs = $auditService->all('password_policy_updated');
+if (empty($policyLogs)) {
+    throw new RuntimeException('Log de auditoria password_policy_updated não registrado.');
+}
+
+// Retorna ao Modo Livre para desenvolvimento
+$policyService->updatePolicy(['enabled' => '0', 'min_length' => '1'], 'usr_001');
+if ($policyService->getPolicy()['enabled']) {
+    throw new RuntimeException('Falha ao desativar política de senhas.');
+}
+if ($policyService->validate('123') !== null) {
+    throw new RuntimeException('Senha 123 deveria ser aceita após desativar política.');
+}
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas, Busca Assistida / Autocomplete (Item 20), Rate Limiting (Força Bruta), Proteção .htaccess, Licença MIT, Arquitetura Clean Slate e Governança de Política de Senhas (Dev-End).\n";
 
 
 

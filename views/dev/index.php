@@ -58,4 +58,17 @@
             <span style="font-size: 1.5rem; color: var(--info);">&rarr;</span>
         </div>
     </a>
+
+    <a href="<?= url($app, '/dev/password-policy') ?>" class="card card-interactive">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <span class="badge badge-warning" style="margin-bottom: 0.5rem;">Segurança & Credenciais</span>
+                <h2>Política de Senhas</h2>
+                <p class="muted" style="font-size: 0.875rem; margin-top: 0.35rem;">
+                    Defina critérios de complexidade (tamanho mínimo, maiúsculas, números, símbolos) ou mantenha o modo livre para testes ágeis.
+                </p>
+            </div>
+            <span style="font-size: 1.5rem; color: var(--warning);">&rarr;</span>
+        </div>
+    </a>
 </div>

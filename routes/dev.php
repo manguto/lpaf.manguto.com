@@ -16,6 +16,8 @@ return static function (Router $router): void {
     $router->get('/dev/modules', [DevController::class, 'modules'])->middleware(AuthMiddleware::class)->permission('dev.access');
     $router->post('/dev/seed', [DevController::class, 'seedDatabase'])->middleware(AuthMiddleware::class)->middleware(CsrfMiddleware::class)->permission('dev.access');
     $router->post('/dev/demo/clear', [DevController::class, 'clearDemo'])->middleware(AuthMiddleware::class)->middleware(CsrfMiddleware::class)->permission('dev.access');
+    $router->get('/dev/password-policy', [DevController::class, 'passwordPolicy'])->middleware(AuthMiddleware::class)->permission('dev.access');
+    $router->post('/dev/password-policy', [DevController::class, 'updatePasswordPolicy'])->middleware(AuthMiddleware::class)->middleware(CsrfMiddleware::class)->permission('dev.access');
     $router->get('/dev/entity-builder', [DevController::class, 'entityBuilder'])->middleware(AuthMiddleware::class)->permission('dev.access');
     $router->post('/dev/entity-builder', [DevController::class, 'storeEntity'])->middleware(AuthMiddleware::class)->middleware(CsrfMiddleware::class)->permission('dev.access');
     $router->get('/dev/modules/{slug}/edit', [DevController::class, 'editEntity'])->middleware(AuthMiddleware::class)->permission('dev.access');

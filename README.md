@@ -1063,11 +1063,12 @@ Status do roadmap:
 22. [x] Blindagem e Proteção de Arquivos Internos (`storage/.htaccess` com `Require all denied`, proteção de dotfiles e bloqueio de acesso a diretórios internos no `.htaccess` raiz)
 23. [x] Licença de Software Formalizada (distribuição sob licença MIT, arquivo `LICENSE` na raiz do repositório)
 24. [x] Arquitetura Clean Slate & Módulos de Modelo Sob Demanda (diretório `modules/` 100% limpo no repositório com apenas `.gitkeep`, eliminando acoplamentos e prevenindo conflitos de merge em atualizações `upstream`; templates/presets de demonstração isolados em `templates/presets/ecommerce/modules/`; instalação automática sob demanda pelo Dev-End ou CLI e botão de limpeza total com 1 clique e salvaguarda automática)
-25. [ ] Paginação e Ordenação nas Listagens (controle dinâmico de registros por página e ordenação clicável por coluna no CRUD)
-26. [ ] Exportação e Importação de Dados CSV (exportação de listagens com filtros ativos e carga em lote com validação prévia de colunas)
-27. [ ] Notificações e Alertas Visuais Flutuantes (sistema leve de *toast notifications* em Vanilla JS)
-28. [ ] Logs Avançados de Auditoria por Módulo (rastreamento detalhado de diffs antes/depois nas alterações do CRUD declarativo)
-29. [ ] Atributos Extras em Tabelas Pivô N:N (metadados adicionais como status ou papel diretamente na linha de junção)
+25. [x] Governança de Política de Senhas no Dev-End (página dedicada em `/dev/password-policy`, toggle liga/desliga para modo desenvolvimento livre sem restrições, calibração granular de tamanho mínimo, letras maiúsculas, minúsculas, números e símbolos, presets rápidos em 1 clique e simulador de senha em tempo real com badges visuais reativos)
+26. [ ] Paginação e Ordenação nas Listagens (controle dinâmico de registros por página e ordenação clicável por coluna no CRUD)
+27. [ ] Exportação e Importação de Dados CSV (exportação de listagens com filtros ativos e carga em lote com validação prévia de colunas)
+28. [ ] Notificações e Alertas Visuais Flutuantes (sistema leve de *toast notifications* em Vanilla JS)
+29. [ ] Logs Avançados de Auditoria por Módulo (rastreamento detalhado de diffs antes/depois nas alterações do CRUD declarativo)
+30. [ ] Atributos Extras em Tabelas Pivô N:N (metadados adicionais como status ou papel diretamente na linha de junção)
 
 ## 41. Contribuições e Manutenção da Documentação
 
@@ -1178,6 +1179,20 @@ Os módulos de modelo são mantidos isolados em um diretório de presets (`templ
    ```
    O script verifica a presença dos módulos de modelo, instala os arquivos a partir do preset e popula a base de dados com registros realistas e conectados.
 
+### Governança de Política de Senhas (Dev-End)
+
+O LPAF oferece controle total sobre os parâmetros de complexidade de credenciais pelo painel **Dev-End &rarr; Política de Senhas** (`/dev/password-policy`):
+
+* **Modo Desenvolvimento Livre (Desativado por Padrão):** Durante a fase de construção e prototipagem, a política de senhas pode permanecer desligada. Qualquer senha rápida (ex: `123`, `dev`, `teste`) é aceita sem nenhum crivo no `/setup`, no `/profile` e no `/admin/users`.
+* **Modo Restrito para Produção/Homologação:** Quando ativada, o desenvolvedor escolhe de forma granular os critérios obrigatórios:
+  - Tamanho mínimo de caracteres (ex: 8, 12, etc.);
+  - Pelo menos uma letra maiúscula (`A-Z`);
+  - Pelo menos uma letra minúscula (`a-z`);
+  - Pelo menos um número (`0-9`);
+  - Pelo menos um caractere especial / símbolo (`!@#$%...`).
+* **Testador em Tempo Real:** A tela conta com um simulador interativo em Vanilla JS com badges visuais reativos, permitindo experimentar senhas e verificar instantaneamente se atendem aos parâmetros configurados.
+* **Predefinições Rápidas em 1 Clique:** Botões para carregar o *Preset Modo Dev Livre*, *Preset Padrão Seguro* ou *Preset Alta Segurança*.
+* **Auditoria de Alterações:** Todas as mudanças nos parâmetros de política de senhas são registradas automaticamente na trilha de auditoria (`password_policy_updated`).
 
 #### Contas de acesso disponíveis
 

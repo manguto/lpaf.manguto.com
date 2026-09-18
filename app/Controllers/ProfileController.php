@@ -65,6 +65,12 @@ final class ProfileController extends Controller
                 Response::redirect('/profile');
             }
 
+            $policyError = (new \App\Services\PasswordPolicyService($this->app))->validate($newPassword);
+            if ($policyError !== null) {
+                Session::flash('error', $policyError);
+                Response::redirect('/profile');
+            }
+
             $passwordChanged = true;
         }
 

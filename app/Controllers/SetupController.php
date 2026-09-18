@@ -44,6 +44,11 @@ final class SetupController extends Controller
             View::render('auth/setup', ['error' => 'A confirmação de senha não confere.', 'app' => $this->app, 'csrf' => $_SESSION['_csrf']]);
             return;
         }
+        $policyError = (new \App\Services\PasswordPolicyService($this->app))->validate($password);
+        if ($policyError !== null) {
+            View::render('auth/setup', ['error' => $policyError, 'app' => $this->app, 'csrf' => $_SESSION['_csrf']]);
+            return;
+        }
         (new SetupService($this->app))->install((string) $request->input('app_name'), $name, $username, $password);
         Response::redirect('/login?installed=1');
     }

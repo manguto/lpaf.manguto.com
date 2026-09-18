@@ -6,6 +6,7 @@ namespace App\Core;
 
 use App\Repositories\PermissionRepository;
 use App\Repositories\RoleRepository;
+use App\Repositories\SettingsRepository;
 use App\Repositories\UserRepository;
 
 final class Application
@@ -13,6 +14,7 @@ final class Application
     public UserRepository $users;
     public RoleRepository $roles;
     public PermissionRepository $permissions;
+    public SettingsRepository $settings;
     public ModuleManager $modules;
     public RateLimiter $rateLimiter;
     public function __construct(public Config $config, public CsvStorage $storage, public Request $request)
@@ -20,6 +22,7 @@ final class Application
         $this->users = new UserRepository($storage);
         $this->roles = new RoleRepository($storage);
         $this->permissions = new PermissionRepository($storage);
+        $this->settings = new SettingsRepository($storage);
         $this->modules = new ModuleManager($this);
         $this->rateLimiter = new RateLimiter($config);
     }
