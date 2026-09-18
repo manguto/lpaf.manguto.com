@@ -392,7 +392,7 @@ O sistema conta com um motor completo de **Relacionamentos 1:N (Chaves Estrangei
 * **Armazenamento Seguro:** As entidades filhas gravam exclusivamente o identificador da entidade pai na coluna correspondente (ex: `cliente_id` armazenando `cli_001`), preservando a atomicidade e legibilidade direta do CSV;
 * **Definição Declarativa:** Campos do tipo `relation` no `module.php` declaram o módulo de destino (`target`) e o campo a ser exibido como rótulo (`display`);
 * **Seleção Visual no Entity Builder:** Ao configurar ou editar uma entidade no Dev-End, o tipo `Relação 1:N` permite vincular o campo a qualquer outro módulo existente através de menu seletor inteligente;
-* **Formulários Dinâmicos:** As telas de criação e edição renderizam `<select>` populados dinamicamente com os registros da entidade pai (`Rótulo (ID)`) e oferecem atalho imediato para cadastro caso a entidade pai ainda esteja vazia;
+* **Formulários Dinâmicos com Busca Assistida (Autocomplete):** As telas de criação e edição renderizam um componente leve e acessível de busca assistida em tempo real (Vanilla JS), permitindo digitar para filtrar registros instantaneamente por rótulo ou código identificador, com navegação fluida por teclado (Setas e Enter), botão de limpeza rápida (`✕`) e mensagem clara para consultas sem correspondência;
 * **Exibição nas Listagens e Detalhes:** As tabelas de listagem (`/app/{slug}`) e detalhes (`show`) substituem os códigos brutos pelos nomes dos registros vinculados, com links diretos para a entidade relacionada;
 * **Sub-listagem Reversa na Visualização do Pai (Visão 360°):** Na visualização de um registro pai (`/app/<pai>/<id>`), o sistema descobre e renderiza automaticamente tabelas com todos os registros filhos vinculados (ex.: contratos do cliente, equipamentos do cliente), além de botão de atalho para cadastrar novos filhos já pré-vinculados;
 * **Filtros Rápidos por Relação na Listagem (`index.php`):** A barra superior de pesquisa identifica campos relacionais e renderiza dinamicamente seletores `<select>` para filtragem imediata em 1 clique (com envio automático `onchange`), combinável com pesquisa textual, atalhos contextuais diretos (`🔍`) nas linhas da tabela e botão para limpar filtros;
@@ -407,7 +407,7 @@ O sistema conta com suporte completo a **Relacionamentos N:N (Muitos para Muitos
 * **Tabelas Pivô Dedicadas em CSV:** As associações são armazenadas exclusivamente em arquivos CSV intermediários (ex: `projeto_equipamentos.csv` ou padrão `{pai}_{destino}.csv`), estruturados com `id`, `created_at`, `{parent_key}` e `{target_key}`, mantendo os CSVs principais das entidades limpos e sem quebra da primeira forma normal;
 * **Configuração Declarativa em `module.php`:** Definição simples via tipo `many_to_many`, indicando o módulo de destino (`target`), campo descritivo (`display`), arquivo pivô opcional (`pivot_file`), e chaves (`parent_key`, `target_key`);
 * **Seleção Visual no Entity Builder:** O Dev-End permite selecionar o tipo `Relação N:N` e indicar o módulo relacionado, com a tabela pivô intermediária sendo gerenciada de forma transparente e automática por convenção do framework (`{pai}_{destino}.csv`);
-* **Interface de Associação Confortável com Busca em Tempo Real (`form.php`):** Formulários de cadastro e edição renderizam um painel contrastado de cartões/checkboxes com filtro de pesquisa instantâneo via JavaScript e botões "Marcar Todos / Desmarcar Todos";
+* **Interface de Associação Confortável com Busca em Tempo Real (`form.php`):** Formulários de cadastro e edição renderizam um painel contrastado de cartões/checkboxes com filtro de pesquisa instantâneo via JavaScript, feedback dinâmico de ausência de registros e botões "Marcar Todos / Desmarcar Todos";
 * **Listagem Inteligente (`index.php`):** Colunas N:N exibem badges dos primeiros itens associados acompanhados de contador cumulativo (`+N`) para preservar a densidade visual;
 * **Detalhamento e Links Diretos (`show.php`):** Na tela de detalhes da entidade, os registros associados são renderizados como badges clicáveis com atalho imediato para o registro correspondente;
 * **Visão 360° Reversa Bidirecional:** A visualização de qualquer entidade que participe como destino de um relacionamento N:N descobre automaticamente e exibe as entidades de origem vinculadas via tabela pivô;
@@ -415,8 +415,8 @@ O sistema conta com suporte completo a **Relacionamentos N:N (Muitos para Muitos
 
 ### Evoluções planejadas para o motor de relacionamentos:
 
-1. **Busca Assistida / Autocomplete em Relações:** Otimização com paginação e busca assíncrona para catálogos com centenas ou milhares de registros;
-2. **Atributos Extras em Tabelas Pivô:** Suporte a metadados adicionais na linha de junção N:N (ex: quantidade, papel específico, data de início da alocação).
+1. **Atributos Extras em Tabelas Pivô:** Suporte a metadados adicionais na linha de junção N:N (ex: quantidade, papel específico, data de início da alocação).
+2. **Carregamento Assíncrono Sob Demanda:** Endpoint para paginação remota em bases com mais de 5.000 registros relacionados.
 
 ## 16. Identificadores
 
@@ -1048,7 +1048,9 @@ Status do roadmap:
 17. [x] Políticas Granulares de Exclusão - `on_delete` (suporte a `restrict`, `set_null` e `cascade` declarativos no Entity Builder e no motor CRUD; prevenção contra exclusões parciais com verificação recursiva; auditoria de registros desvinculados ou removidos em cascata; e botões contextuais `🔒 Excluir` para restrição e `💥 Excluir` para cascata com confirmações detalhadas)
 18. [x] Verificação Prévia de Ambiente e Diagnóstico de Requisitos (Preflight Checks: detecção de dependências ausentes, validação de PHP 8.2+, extensões e permissões com interface web amigável, auto-instalação e saída formatada no CLI)
 19. [x] Relacionamentos N:N com Tabelas Pivot Declarativas (associações muitos-para-muitos via CSVs intermediários de junção, interface de checkboxes com busca em tempo real, resolução bidirecional na Visão 360°, exibição resumida na listagem e sincronização atômica)
-20. [ ] Busca Assistida / Autocomplete em Relações (próximo aprimoramento previsto: otimização para catálogos com centenas ou milhares de registros)
+20. [x] Busca Assistida / Autocomplete em Relações (componente leve em Vanilla JS para seleção instantânea com filtro em tempo real, navegação por teclado, botão de limpeza rápida, badges de identificador e feedback de busca vazia em relações 1:N e N:N)
+21: [ ] Paginação e Ordenação nas Listagens (controle dinâmico de registros por página e ordenação clicável por coluna no CRUD)
+22: [ ] Exportação e Importação de Dados CSV (exportação de listagens com filtros ativos e carga em lote com validação prévia de colunas)
 
 ## 41. Contribuições e Manutenção da Documentação
 
@@ -1085,7 +1087,7 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
    ```bash
    php tests/verify.php
    ```
-   O teste roda de forma isolada em diretório temporário, validando inicialização com preflight, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos), Relacionamentos 1:N (com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`) e Relacionamentos N:N com Tabelas Pivô Declarativas (`sync`, `resolve`, `reverse 360` e `cascade cleanup`).
+   O teste roda de forma isolada em diretório temporário, validando inicialização com preflight, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos), Relacionamentos 1:N (com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`), Relacionamentos N:N com Tabelas Pivô Declarativas (`sync`, `resolve`, `reverse 360` e `cascade cleanup`) e Busca Assistida / Autocomplete (Item 20).
 
 ### Carga de dados para testes e demonstração (Seed)
 

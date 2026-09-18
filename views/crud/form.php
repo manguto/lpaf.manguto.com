@@ -4,7 +4,7 @@
 <p class="muted" style="margin-bottom: 2rem;">Preencha os dados abaixo para <?= $isEdit ? 'atualizar o' : 'cadastrar um novo' ?> registro.</p>
 
 <form method="post" action="<?= $isEdit ? url($app, '/app/' . $module['slug'] . '/' . $item['id']) : url($app, '/app/' . $module['slug']) ?>" style="max-width: 720px;">
-    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+    <input type="hidden" name="_csrf" value="<?= e($csrf ?? '') ?>">
 
     <?php if ($isEdit && !empty($item['id'])): ?>
         <div style="margin-bottom: 1rem;">
@@ -45,20 +45,68 @@
                     <?php 
                     $relInfo = $relations[$key] ?? ['items' => [], 'target' => '', 'target_entity' => 'Registro']; 
                     $relItems = $relInfo['items'] ?? [];
+                    $selectedLabel = '';
+                    foreach ($relItems as $relOpt) {
+                        if ($val === (string) $relOpt['id']) {
+                            $selectedLabel = $relOpt['label'];
+                            break;
+                        }
+                    }
                     ?>
-                    <select id="field_<?= e($key) ?>" name="<?= e($key) ?>" <?= $required ? 'required' : '' ?>>
-                        <option value="">Selecione um(a) <?= e($relInfo['target_entity']) ?>...</option>
-                        <?php foreach ($relItems as $relOpt): ?>
-                            <option value="<?= e($relOpt['id']) ?>" <?= $val === (string) $relOpt['id'] ? 'selected' : '' ?>>
-                                <?= e($relOpt['label']) ?> (<?= e($relOpt['id']) ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
                     <?php if (empty($relItems)): ?>
+                        <input type="hidden" name="<?= e($key) ?>" id="field_<?= e($key) ?>" value="">
+                        <input type="text" class="autocomplete-input" value="" placeholder="Nenhum(a) <?= e($relInfo['target_entity']) ?> cadastrado(a)" disabled>
                         <span class="muted" style="font-size: 0.775rem; display: block; margin-top: 0.35rem;">
                             ⚠️ Nenhum(a) <strong><?= e($relInfo['target_entity']) ?></strong> cadastrado(a) ainda. 
                             <a href="<?= url($app, '/app/' . $relInfo['target'] . '/create') ?>" target="_blank" style="color: var(--primary); font-weight: 600;">Cadastrar agora &rarr;</a>
                         </span>
+                    <?php else: ?>
+                        <div class="autocomplete-container" id="autocomplete_<?= e($key) ?>">
+                            <input type="hidden" name="<?= e($key) ?>" id="field_<?= e($key) ?>" value="<?= e($val) ?>">
+                            
+                            <div class="autocomplete-input-wrapper">
+                                <input type="text" 
+                                       id="autocomplete_input_<?= e($key) ?>" 
+                                       class="autocomplete-input" 
+                                       placeholder="Buscar e selecionar <?= e($relInfo['target_entity']) ?>..." 
+                                       value="<?= e($selectedLabel) ?>" 
+                                       autocomplete="off"
+                                       <?= $required ? 'required' : '' ?>
+                                       onfocus="openAutocomplete('<?= e($key) ?>')"
+                                       oninput="filterAutocomplete('<?= e($key) ?>', this.value)"
+                                       onkeydown="navigateAutocomplete('<?= e($key) ?>', event)">
+                                
+                                <div class="autocomplete-actions">
+                                    <button type="button" 
+                                            id="autocomplete_clear_<?= e($key) ?>" 
+                                            class="autocomplete-clear-btn" 
+                                            title="Limpar seleção" 
+                                            style="<?= $val !== '' ? 'display: block;' : 'display: none;' ?>" 
+                                            onclick="clearAutocomplete('<?= e($key) ?>')">
+                                        &times;
+                                    </button>
+                                    <span class="autocomplete-arrow" onclick="toggleAutocomplete('<?= e($key) ?>')">▾</span>
+                                </div>
+                            </div>
+
+                            <div class="autocomplete-dropdown" id="autocomplete_dropdown_<?= e($key) ?>">
+                                <div class="autocomplete-options" id="autocomplete_options_<?= e($key) ?>">
+                                    <?php foreach ($relItems as $relOpt): ?>
+                                        <?php $isSelected = ($val === (string) $relOpt['id']); ?>
+                                        <div class="autocomplete-option <?= $isSelected ? 'is-selected' : '' ?>" 
+                                             data-id="<?= e($relOpt['id']) ?>" 
+                                             data-label="<?= e($relOpt['label']) ?>"
+                                             onclick="selectAutocompleteOption('<?= e($key) ?>', '<?= e($relOpt['id']) ?>', this.getAttribute('data-label'))">
+                                            <span class="autocomplete-text"><?= e($relOpt['label']) ?></span>
+                                            <code class="autocomplete-badge"><?= e($relOpt['id']) ?></code>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <div class="autocomplete-empty" id="autocomplete_empty_<?= e($key) ?>" style="display: none;">
+                                    Nenhum registro encontrado.
+                                </div>
+                            </div>
+                        </div>
                     <?php endif; ?>
                 <?php elseif ($type === 'many_to_many'): ?>
                     <?php
@@ -129,16 +177,227 @@
 </form>
 
 <script>
+// --- Busca Assistida / Autocomplete (1:N) ---
+function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
+}
+
+function openAutocomplete(key) {
+    document.querySelectorAll('.autocomplete-container.is-open').forEach(c => {
+        if (c.id !== 'autocomplete_' + key) c.classList.remove('is-open');
+    });
+    const container = document.getElementById('autocomplete_' + key);
+    if (container) {
+        container.classList.add('is-open');
+        const options = container.querySelectorAll('.autocomplete-option');
+        options.forEach(opt => opt.style.display = 'flex');
+        const emptyState = document.getElementById('autocomplete_empty_' + key);
+        if (emptyState) emptyState.style.display = 'none';
+    }
+}
+
+function toggleAutocomplete(key) {
+    const container = document.getElementById('autocomplete_' + key);
+    const input = document.getElementById('autocomplete_input_' + key);
+    if (!container) return;
+    if (container.classList.contains('is-open')) {
+        container.classList.remove('is-open');
+    } else {
+        openAutocomplete(key);
+        if (input) input.focus();
+    }
+}
+
+function filterAutocomplete(key, query) {
+    const q = query.toLowerCase().trim();
+    const container = document.getElementById('autocomplete_' + key);
+    if (!container) return;
+    container.classList.add('is-open');
+
+    const optionsContainer = document.getElementById('autocomplete_options_' + key);
+    const emptyState = document.getElementById('autocomplete_empty_' + key);
+    const options = optionsContainer.querySelectorAll('.autocomplete-option');
+    let visibleCount = 0;
+
+    options.forEach(opt => {
+        const label = (opt.getAttribute('data-label') || '').toLowerCase();
+        const id = (opt.getAttribute('data-id') || '').toLowerCase();
+        const match = label.includes(q) || id.includes(q);
+        opt.style.display = match ? 'flex' : 'none';
+        opt.classList.remove('is-focused');
+        if (match) visibleCount++;
+    });
+
+    if (emptyState) {
+        if (visibleCount === 0) {
+            emptyState.style.display = 'block';
+            emptyState.innerHTML = `Nenhum registro encontrado para "<strong>${escapeHtml(query)}</strong>".`;
+        } else {
+            emptyState.style.display = 'none';
+        }
+    }
+
+    const hidden = document.getElementById('field_' + key);
+    const clearBtn = document.getElementById('autocomplete_clear_' + key);
+    if (q === '') {
+        if (hidden) hidden.value = '';
+        if (clearBtn) clearBtn.style.display = 'none';
+    }
+}
+
+function selectAutocompleteOption(key, id, label) {
+    const hidden = document.getElementById('field_' + key);
+    const input = document.getElementById('autocomplete_input_' + key);
+    const clearBtn = document.getElementById('autocomplete_clear_' + key);
+    const container = document.getElementById('autocomplete_' + key);
+
+    if (hidden) hidden.value = id;
+    if (input) {
+        input.value = label;
+        input.setCustomValidity('');
+    }
+    if (clearBtn) clearBtn.style.display = 'block';
+
+    const options = container.querySelectorAll('.autocomplete-option');
+    options.forEach(opt => {
+        const isThis = opt.getAttribute('data-id') === id;
+        opt.classList.toggle('is-selected', isThis);
+        opt.style.display = 'flex';
+    });
+
+    container.classList.remove('is-open');
+}
+
+function clearAutocomplete(key) {
+    const hidden = document.getElementById('field_' + key);
+    const input = document.getElementById('autocomplete_input_' + key);
+    const clearBtn = document.getElementById('autocomplete_clear_' + key);
+    const container = document.getElementById('autocomplete_' + key);
+
+    if (hidden) hidden.value = '';
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+    if (clearBtn) clearBtn.style.display = 'none';
+
+    const options = container.querySelectorAll('.autocomplete-option');
+    options.forEach(opt => {
+        opt.classList.remove('is-selected');
+        opt.style.display = 'flex';
+    });
+
+    const emptyState = document.getElementById('autocomplete_empty_' + key);
+    if (emptyState) emptyState.style.display = 'none';
+
+    container.classList.add('is-open');
+}
+
+function navigateAutocomplete(key, event) {
+    const container = document.getElementById('autocomplete_' + key);
+    if (!container) return;
+
+    if (event.key === 'Escape') {
+        container.classList.remove('is-open');
+        return;
+    }
+
+    if (!container.classList.contains('is-open') && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+        openAutocomplete(key);
+        return;
+    }
+
+    const options = Array.from(container.querySelectorAll('.autocomplete-option')).filter(o => o.style.display !== 'none');
+    if (options.length === 0) return;
+
+    let focusedIdx = options.findIndex(o => o.classList.contains('is-focused'));
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (focusedIdx >= 0) options[focusedIdx].classList.remove('is-focused');
+        focusedIdx = (focusedIdx + 1) % options.length;
+        options[focusedIdx].classList.add('is-focused');
+        options[focusedIdx].scrollIntoView({ block: 'nearest' });
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (focusedIdx >= 0) options[focusedIdx].classList.remove('is-focused');
+        focusedIdx = (focusedIdx - 1 + options.length) % options.length;
+        options[focusedIdx].classList.add('is-focused');
+        options[focusedIdx].scrollIntoView({ block: 'nearest' });
+    } else if (event.key === 'Enter') {
+        if (focusedIdx >= 0) {
+            event.preventDefault();
+            options[focusedIdx].click();
+        }
+    }
+}
+
+// Fechar ao clicar fora e garantir integridade de rótulo
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.autocomplete-container.is-open').forEach(container => {
+        if (!container.contains(e.target)) {
+            container.classList.remove('is-open');
+            const key = container.id.replace('autocomplete_', '');
+            const hidden = document.getElementById('field_' + key);
+            const input = document.getElementById('autocomplete_input_' + key);
+            if (hidden && input) {
+                if (hidden.value === '') {
+                    input.value = '';
+                } else {
+                    const selectedOpt = container.querySelector('.autocomplete-option[data-id="' + hidden.value + '"]');
+                    if (selectedOpt) {
+                        input.value = selectedOpt.getAttribute('data-label') || '';
+                    }
+                }
+            }
+        }
+    });
+});
+
+// Validação prévia de campos obrigatórios no submit
+document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        const autocompletes = form.querySelectorAll('.autocomplete-container');
+        autocompletes.forEach(container => {
+            const key = container.id.replace('autocomplete_', '');
+            const hidden = document.getElementById('field_' + key);
+            const input = document.getElementById('autocomplete_input_' + key);
+            if (input && input.hasAttribute('required') && (!hidden || hidden.value.trim() === '')) {
+                input.value = '';
+            }
+        });
+    });
+});
+
+// --- Filtro de Relacionamentos N:N ---
 function filterM2MList(input, containerId) {
     const q = input.value.toLowerCase().trim();
     const container = document.getElementById(containerId);
     if (!container) return;
     const cards = container.querySelectorAll('.m2m-item-card');
+    let visibleCount = 0;
     cards.forEach(card => {
         const text = card.textContent.toLowerCase();
-        card.style.display = text.includes(q) ? 'flex' : 'none';
+        const match = text.includes(q);
+        card.style.display = match ? 'flex' : 'none';
+        if (match) visibleCount++;
     });
+
+    let emptyMsg = container.querySelector('.m2m-filter-empty');
+    if (!emptyMsg) {
+        emptyMsg = document.createElement('div');
+        emptyMsg.className = 'm2m-filter-empty muted';
+        emptyMsg.style.cssText = 'grid-column: 1 / -1; text-align: center; padding: 1rem; font-size: 0.85rem;';
+        container.appendChild(emptyMsg);
+    }
+    if (visibleCount === 0 && cards.length > 0) {
+        emptyMsg.style.display = 'block';
+        emptyMsg.innerHTML = `Nenhum registro encontrado para "<strong>${escapeHtml(input.value)}</strong>".`;
+    } else {
+        emptyMsg.style.display = 'none';
+    }
 }
+
 function toggleAllM2M(containerId, check) {
     const container = document.getElementById(containerId);
     if (!container) return;

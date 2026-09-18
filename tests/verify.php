@@ -599,7 +599,49 @@ rmdir($projetosTestDir);
 unlink($equipamentosTestDir . '/module.php');
 rmdir($equipamentosTestDir);
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade) e Relacionamentos N:N com Tabelas Pivô Declarativas (sync, resolve, reverse 360 e cascade cleanup).\n";
+// 6. Teste da renderização do componente de Busca Assistida / Autocomplete (1:N)
+$testModule = [
+    'name' => 'Tarefas de Teste',
+    'entity' => 'Tarefa',
+    'slug' => 'tarefas_test',
+    'fields' => [
+        'titulo' => ['label' => 'Título', 'type' => 'string', 'required' => true],
+        'projeto_id' => ['label' => 'Projeto', 'type' => 'relation', 'target' => 'projetos', 'required' => true],
+    ],
+];
+$testRelations = [
+    'projeto_id' => [
+        'target' => 'projetos',
+        'target_entity' => 'Projeto',
+        'items' => [
+            ['id' => 'pro_001', 'label' => 'Portal de Telemetria'],
+            ['id' => 'pro_002', 'label' => 'App Mobile'],
+        ],
+    ],
+];
+$testManyToMany = [];
+$isEdit = false;
+$csrf = 'test_token';
+$item = ['projeto_id' => 'pro_001'];
+$module = $testModule;
+$relations = $testRelations;
+$manyToMany = $testManyToMany;
+
+ob_start();
+include dirname(__DIR__) . '/views/crud/form.php';
+$formHtml = ob_get_clean();
+
+if (!str_contains($formHtml, 'autocomplete-container') || !str_contains($formHtml, 'autocomplete_projeto_id')) {
+    throw new RuntimeException('Componente de Busca Assistida (autocomplete) 1:N não foi renderizado no form.php.');
+}
+if (!str_contains($formHtml, 'data-id="pro_001"') || !str_contains($formHtml, 'Portal de Telemetria')) {
+    throw new RuntimeException('Opções do autocomplete 1:N não foram renderizadas corretamente no form.php.');
+}
+if (!str_contains($formHtml, 'filterAutocomplete') || !str_contains($formHtml, 'selectAutocompleteOption')) {
+    throw new RuntimeException('Scripts de busca assistida ausentes no form.php.');
+}
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas e Busca Assistida / Autocomplete (Item 20).\n";
 
 
 
