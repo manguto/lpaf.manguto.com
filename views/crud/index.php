@@ -113,6 +113,31 @@ $hasActiveFilters = !empty($query) || !empty(array_filter($activeFilters ?? []))
                                     <?php else: ?>
                                         <span class="muted">-</span>
                                     <?php endif; ?>
+                                <?php elseif ($type === 'many_to_many'): ?>
+                                    <?php
+                                    $linkedItems = $manyToManyMaps[$key][$item['id']] ?? [];
+                                    $targetSlug = $f['target'] ?? '';
+                                    ?>
+                                    <?php if (!empty($linkedItems)): ?>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center;">
+                                            <?php 
+                                            $shown = array_slice($linkedItems, 0, 3);
+                                            $remaining = count($linkedItems) - count($shown);
+                                            foreach ($shown as $li): ?>
+                                                <a href="<?= url($app, '/app/' . $targetSlug . '/' . $li['id']) ?>" 
+                                                   class="badge badge-primary" 
+                                                   style="text-decoration: none; font-size: 0.72rem; padding: 0.15rem 0.4rem; white-space: nowrap;"
+                                                   title="<?= e($li['label']) ?> (<?= e($li['id']) ?>)">
+                                                    <?= e(mb_strimwidth($li['label'], 0, 18, '...')) ?>
+                                                </a>
+                                            <?php endforeach; ?>
+                                            <?php if ($remaining > 0): ?>
+                                                <span class="badge badge-gray" style="font-size: 0.7rem; padding: 0.15rem 0.35rem;" title="<?= count($linkedItems) ?> registros associados no total">+<?= $remaining ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <span class="muted" style="font-size: 0.8rem;">—</span>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <?= e($val ?: '-') ?>
                                 <?php endif; ?>

@@ -400,10 +400,23 @@ O sistema conta com um motor completo de **Relacionamentos 1:N (Chaves Estrangei
   - *No Salvamento:* Validação estrita impedindo o envio de chaves estrangeiras inexistentes;
   - *Na Exclusão:* Bloqueio ativo de exclusão de registros pai que possuam vínculos ativos em outros módulos, emitindo alerta amigável e prevenindo a geração de registros órfãos.
 
+### Relacionamentos N:N com Tabelas Pivô Declarativas (Módulos & Entity Builder)
+
+O sistema conta com suporte completo a **Relacionamentos N:N (Muitos para Muitos)** desacoplados e baseados em tabelas de junção (*pivot tables*):
+
+* **Tabelas Pivô Dedicadas em CSV:** As associações são armazenadas exclusivamente em arquivos CSV intermediários (ex: `projeto_equipamentos.csv` ou padrão `{pai}_{destino}.csv`), estruturados com `id`, `created_at`, `{parent_key}` e `{target_key}`, mantendo os CSVs principais das entidades limpos e sem quebra da primeira forma normal;
+* **Configuração Declarativa em `module.php`:** Definição simples via tipo `many_to_many`, indicando o módulo de destino (`target`), campo descritivo (`display`), arquivo pivô opcional (`pivot_file`), e chaves (`parent_key`, `target_key`);
+* **Seleção Visual no Entity Builder:** O Dev-End permite selecionar o tipo `🔗 N:N (Muitos para Muitos - Tabela Pivô)`, selecionar o módulo relacionado e opcionalmente personalizar o nome do arquivo pivô CSV;
+* **Interface de Associação Confortável com Busca em Tempo Real (`form.php`):** Formulários de cadastro e edição renderizam um painel contrastado de cartões/checkboxes com filtro de pesquisa instantâneo via JavaScript e botões "Marcar Todos / Desmarcar Todos";
+* **Listagem Inteligente (`index.php`):** Colunas N:N exibem badges dos primeiros itens associados acompanhados de contador cumulativo (`+N`) para preservar a densidade visual;
+* **Detalhamento e Links Diretos (`show.php`):** Na tela de detalhes da entidade, os registros associados são renderizados como badges clicáveis com atalho imediato para o registro correspondente;
+* **Visão 360° Reversa Bidirecional:** A visualização de qualquer entidade que participe como destino de um relacionamento N:N descobre automaticamente e exibe as entidades de origem vinculadas via tabela pivô;
+* **Sincronização e Limpeza em Cascata Atômica:** O salvamento sincroniza atomicamente as adições e remoções de vínculos na tabela pivô com `flock()`, e ao excluir qualquer um dos lados do relacionamento, todas as linhas correspondentes na tabela pivô são expurgadas automaticamente, impedindo chaves órfãs.
+
 ### Evoluções planejadas para o motor de relacionamentos:
 
-1. **Relacionamentos N:N (Muitos para Muitos com Tabela Pivô):** suporte a tabelas intermediárias automáticas (`entidade_a_b.csv`) conforme o modelo `user_roles.csv`;
-2. **Políticas granulares de exclusão (`on_delete`):** suporte declarativo a `restrict` (bloquear exclusão) e `set_null` (desvincular e manter filho quando opcional).
+1. **Busca Assistida / Autocomplete em Relações:** Otimização com paginação e busca assíncrona para catálogos com centenas ou milhares de registros;
+2. **Atributos Extras em Tabelas Pivô:** Suporte a metadados adicionais na linha de junção N:N (ex: quantidade, papel específico, data de início da alocação).
 
 ## 16. Identificadores
 
@@ -1032,8 +1045,8 @@ Status do roadmap:
 16. [x] Filtros Rápidos por Relação na Listagem (atalho de filtro contextual direto na coluna de relação da tabela com badge ativa e remoção rápida de filtro)
 17. [x] Políticas Granulares de Exclusão - `on_delete` (suporte a `restrict`, `set_null` e `cascade` declarativos no Entity Builder e no motor CRUD; prevenção contra exclusões parciais com verificação recursiva; auditoria de registros desvinculados ou removidos em cascata; e botões contextuais `🔒 Excluir` para restrição e `💥 Excluir` para cascata com confirmações detalhadas)
 18. [x] Verificação Prévia de Ambiente e Diagnóstico de Requisitos (Preflight Checks: detecção de dependências ausentes, validação de PHP 8.2+, extensões e permissões com interface web amigável, auto-instalação e saída formatada no CLI)
-19. [ ] Relacionamentos N:N com Tabelas Pivot Declarativas (próximo aprimoramento previsto)
-20. [ ] Busca Assistida / Autocomplete em Relações (otimização para catálogos com centenas ou milhares de registros)
+19. [x] Relacionamentos N:N com Tabelas Pivot Declarativas (associações muitos-para-muitos via CSVs intermediários de junção, interface de checkboxes com busca em tempo real, resolução bidirecional na Visão 360°, exibição resumida na listagem e sincronização atômica)
+20. [ ] Busca Assistida / Autocomplete em Relações (próximo aprimoramento previsto: otimização para catálogos com centenas ou milhares de registros)
 
 ## 41. Contribuições e Manutenção da Documentação
 
@@ -1070,11 +1083,11 @@ A fundação funcional utiliza PHP 8.2+, Composer exclusivamente para autoload P
    ```bash
    php tests/verify.php
    ```
-   O teste roda de forma isolada em diretório temporário, validando inicialização com preflight, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`).
+   O teste roda de forma isolada em diretório temporário, validando inicialização com preflight, integridade CSV, autenticação, RBAC, backups (criação/restauração com salvaguarda), auditoria (escrita em append e consultas), perfil de usuário com troca de senha, motor de módulos isolados, Entity Builder (criação, edição, expansão e reordenação de campos), Relacionamentos 1:N (com integridade referencial e políticas `on_delete`: `restrict`, `set_null` e `cascade`) e Relacionamentos N:N com Tabelas Pivô Declarativas (`sync`, `resolve`, `reverse 360` e `cascade cleanup`).
 
 ### Carga de dados para testes e demonstração (Seed)
 
-Para analisar todas as funcionalidades atuais e validar implementações futuras (filtros, paginação, integridade referencial 1:N, visão 360°, auditoria e futuras relações N:N), execute o seeder da aplicação:
+Para analisar todas as funcionalidades atuais e validar implementações futuras (filtros, paginação, integridade referencial 1:N, visão 360°, auditoria e relações N:N), execute o seeder da aplicação:
 
 ```bash
 php scripts/seed.php
@@ -1097,6 +1110,7 @@ php scripts/seed.php
 * **Tarefas (12 registros)**: Vinculadas a Projetos com política `on_delete = cascade`, múltiplos status (`A Fazer`, `Em Andamento`, `Concluído`, `Cancelado`), prioridades e prazos variados.
 * **Equipamentos (8 registros)**: Notebooks, Desktops, Servidores, Switches e Impressoras com tombo/patrimônio, fabricantes e status ativo/inativo.
 * **Manutenções (8 registros)**: Ordens de serviço preventivas, corretivas e de upgrade vinculadas aos equipamentos com custos em R$, técnicos responsáveis e descrições detalhadas.
+* **Tabela Pivô N:N Projetos <-> Equipamentos (10 registros)**: Arquivo `storage/data/projeto_equipamentos.csv` demonstrando associações compartilhadas de notebooks, servidores e switches entre múltiplos projetos corporativos.
 * **Auditoria (10 registros)**: Eventos de auditoria em `storage/logs/audit_log.csv` simulando histórico operacional.
 * **Backups**: Snapshot inicial funcional em `storage/backups/` para teste imediato de download e restauração no Dev-End.
 

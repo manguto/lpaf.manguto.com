@@ -251,8 +251,10 @@ main {
                             $fType = $f['type'] ?? 'string';
                             $isSelect = ($fType === 'select');
                             $isRelation = ($fType === 'relation');
+                            $isManyToMany = ($fType === 'many_to_many');
                             $optionsVal = isset($f['options']) && is_array($f['options']) ? implode(', ', $f['options']) : '';
                             $relTarget = $f['target'] ?? '';
+                            $pivotFile = $f['pivot_file'] ?? '';
                             ?>
                             <tr class="field-row" data-index="<?= $idx ?>">
                                 <td style="text-align: center; white-space: nowrap; width: 68px;">
@@ -279,15 +281,16 @@ main {
                                         <option value="date" <?= $fType === 'date' ? 'selected' : '' ?>>Data</option>
                                         <option value="select" <?= $isSelect ? 'selected' : '' ?>>Seleção (Select)</option>
                                         <option value="relation" <?= $isRelation ? 'selected' : '' ?>>🔗 Relação (Chave 1:N)</option>
+                                        <option value="many_to_many" <?= $isManyToMany ? 'selected' : '' ?>>🔗 N:N (Muitos para Muitos - Tabela Pivô)</option>
                                         <option value="boolean" <?= $fType === 'boolean' ? 'selected' : '' ?>>Sim / Não</option>
                                     </select>
                                 </td>
                                 <td>
                                     <div class="col-options-select" style="display: <?= $isSelect ? 'block' : 'none' ?>;">
-                                        <input type="text" name="fields[<?= $idx ?>][options]" value="<?= e($optionsVal) ?>" placeholder="Opção 1, Opção 2" <?= $isSelect ? 'required' : '' ?>>
+                                        <input type="text" name="fields[<?= $idx ?>][options]" value="<?= e($optionsVal) ?>" placeholder="Opção 1, Opção 2" <?= $isSelect ? 'required' : 'disabled' ?>>
                                     </div>
                                     <div class="col-options-relation" style="display: <?= $isRelation ? 'block' : 'none' ?>;">
-                                        <select name="fields[<?= $idx ?>][relation_target]" <?= $isRelation ? 'required' : '' ?> style="margin-bottom: 0.35rem;">
+                                        <select name="fields[<?= $idx ?>][relation_target]" <?= $isRelation ? 'required' : 'disabled' ?> style="margin-bottom: 0.35rem;">
                                             <option value="">Vincular a...</option>
                                             <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
                                                 <?php if ($modSlug !== ($module['slug'] ?? '')): ?>
@@ -297,13 +300,26 @@ main {
                                                 <?php endif; ?>
                                             <?php endforeach; ?>
                                         </select>
-                                        <select name="fields[<?= $idx ?>][relation_on_delete]" title="Ação ao Excluir o Registro Pai" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;">
+                                        <select name="fields[<?= $idx ?>][relation_on_delete]" title="Ação ao Excluir o Registro Pai" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" <?= $isRelation ? '' : 'disabled' ?>>
                                             <option value="restrict" <?= ($f['on_delete'] ?? 'restrict') === 'restrict' ? 'selected' : '' ?>>🔒 Bloquear (Restrict)</option>
                                             <option value="set_null" <?= ($f['on_delete'] ?? '') === 'set_null' ? 'selected' : '' ?>>⚪ Desvincular (Set Null)</option>
                                             <option value="cascade" <?= ($f['on_delete'] ?? '') === 'cascade' ? 'selected' : '' ?>>💥 Em Cascata (Cascade)</option>
                                         </select>
                                     </div>
-                                    <span class="cell-muted-dash" style="display: <?= (!$isSelect && !$isRelation) ? 'block' : 'none' ?>;">—</span>
+                                    <div class="col-options-many-to-many" style="display: <?= $isManyToMany ? 'block' : 'none' ?>;">
+                                        <select name="fields[<?= $idx ?>][relation_target]" <?= $isManyToMany ? 'required' : 'disabled' ?> style="margin-bottom: 0.35rem;">
+                                            <option value="">Vincular a (Entidade N:N)...</option>
+                                            <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
+                                                <?php if ($modSlug !== ($module['slug'] ?? '')): ?>
+                                                    <option value="<?= e($modSlug) ?>" <?= $relTarget === $modSlug ? 'selected' : '' ?>>
+                                                        <?= e($mod['name']) ?> (<?= e($mod['entity']) ?>)
+                                                    </option>
+                                                <?php endif; ?>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <input type="text" name="fields[<?= $idx ?>][pivot_file]" value="<?= e($pivotFile) ?>" placeholder="Arquivo pivô (ex: <?= e($module['slug'] ?? 'modulo') ?>_itens.csv)" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" title="Opcional: nome do arquivo CSV pivô" <?= $isManyToMany ? '' : 'disabled' ?>>
+                                    </div>
+                                    <span class="cell-muted-dash" style="display: <?= (!$isSelect && !$isRelation && !$isManyToMany) ? 'block' : 'none' ?>;">—</span>
                                 </td>
                                 <td style="text-align: center;">
                                     <input type="checkbox" name="fields[<?= $idx ?>][required]" value="1" <?= !empty($f['required']) ? 'checked' : '' ?>>
@@ -345,15 +361,16 @@ main {
                                     <option value="date">Data</option>
                                     <option value="select">Seleção (Select)</option>
                                     <option value="relation">🔗 Relação (Chave 1:N)</option>
+                                    <option value="many_to_many">🔗 N:N (Muitos para Muitos - Tabela Pivô)</option>
                                     <option value="boolean">Sim / Não</option>
                                 </select>
                             </td>
                             <td>
                                 <div class="col-options-select" style="display: none;">
-                                    <input type="text" name="fields[0][options]" placeholder="Opção 1, Opção 2">
+                                    <input type="text" name="fields[0][options]" placeholder="Opção 1, Opção 2" disabled>
                                 </div>
                                 <div class="col-options-relation" style="display: none;">
-                                    <select name="fields[0][relation_target]" style="margin-bottom: 0.35rem;">
+                                    <select name="fields[0][relation_target]" style="margin-bottom: 0.35rem;" disabled>
                                         <option value="">Vincular a...</option>
                                         <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
                                             <option value="<?= e($modSlug) ?>">
@@ -361,11 +378,22 @@ main {
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <select name="fields[0][relation_on_delete]" title="Ação ao Excluir o Registro Pai" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;">
+                                    <select name="fields[0][relation_on_delete]" title="Ação ao Excluir o Registro Pai" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" disabled>
                                         <option value="restrict" selected>🔒 Bloquear (Restrict)</option>
                                         <option value="set_null">⚪ Desvincular (Set Null)</option>
                                         <option value="cascade">💥 Em Cascata (Cascade)</option>
                                     </select>
+                                </div>
+                                <div class="col-options-many-to-many" style="display: none;">
+                                    <select name="fields[0][relation_target]" style="margin-bottom: 0.35rem;" disabled>
+                                        <option value="">Vincular a (Entidade N:N)...</option>
+                                        <?php foreach (($allModules ?? []) as $modSlug => $mod): ?>
+                                            <option value="<?= e($modSlug) ?>">
+                                                <?= e($mod['name']) ?> (<?= e($mod['entity']) ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <input type="text" name="fields[0][pivot_file]" placeholder="Arquivo pivô (ex: pivot.csv)" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" title="Opcional: nome do arquivo CSV pivô" disabled>
                                 </div>
                                 <span class="cell-muted-dash">—</span>
                             </td>
@@ -450,34 +478,44 @@ function handleTypeChange(selectElement) {
     const row = selectElement.closest('tr');
     const selectBox = row.querySelector('.col-options-select');
     const relationBox = row.querySelector('.col-options-relation');
+    const m2mBox = row.querySelector('.col-options-many-to-many');
     const dash = row.querySelector('.cell-muted-dash');
-    const optionsInput = row.querySelector('input[name*="[options]"]');
-    const relationSelect = row.querySelector('select[name*="[relation_target]"]');
+
+    const optionsInputs = selectBox ? selectBox.querySelectorAll('input') : [];
+    const relationInputs = relationBox ? relationBox.querySelectorAll('select, input') : [];
+    const m2mInputs = m2mBox ? m2mBox.querySelectorAll('select, input') : [];
+
+    function toggleBox(box, inputs, show, requireFirst) {
+        if (!box) return;
+        box.style.display = show ? 'block' : 'none';
+        inputs.forEach((inp, i) => {
+            inp.disabled = !show;
+            if (i === 0) inp.required = (show && requireFirst);
+        });
+        if (show && inputs.length > 0) {
+            inputs[0].focus();
+        }
+    }
+
+    if (dash) dash.style.display = 'none';
 
     if (selectElement.value === 'select') {
-        if (selectBox) selectBox.style.display = 'block';
-        if (relationBox) relationBox.style.display = 'none';
-        if (dash) dash.style.display = 'none';
-        if (optionsInput) {
-            optionsInput.required = true;
-            optionsInput.focus();
-        }
-        if (relationSelect) relationSelect.required = false;
+        toggleBox(selectBox, optionsInputs, true, true);
+        toggleBox(relationBox, relationInputs, false, false);
+        toggleBox(m2mBox, m2mInputs, false, false);
     } else if (selectElement.value === 'relation') {
-        if (selectBox) selectBox.style.display = 'none';
-        if (relationBox) relationBox.style.display = 'block';
-        if (dash) dash.style.display = 'none';
-        if (optionsInput) optionsInput.required = false;
-        if (relationSelect) {
-            relationSelect.required = true;
-            relationSelect.focus();
-        }
+        toggleBox(selectBox, optionsInputs, false, false);
+        toggleBox(relationBox, relationInputs, true, true);
+        toggleBox(m2mBox, m2mInputs, false, false);
+    } else if (selectElement.value === 'many_to_many') {
+        toggleBox(selectBox, optionsInputs, false, false);
+        toggleBox(relationBox, relationInputs, false, false);
+        toggleBox(m2mBox, m2mInputs, true, true);
     } else {
-        if (selectBox) selectBox.style.display = 'none';
-        if (relationBox) relationBox.style.display = 'none';
+        toggleBox(selectBox, optionsInputs, false, false);
+        toggleBox(relationBox, relationInputs, false, false);
+        toggleBox(m2mBox, m2mInputs, false, false);
         if (dash) dash.style.display = 'block';
-        if (optionsInput) optionsInput.required = false;
-        if (relationSelect) relationSelect.required = false;
     }
 }
 
@@ -605,22 +643,30 @@ function addFieldRow() {
                 <option value="date">Data</option>
                 <option value="select">Seleção (Select)</option>
                 <option value="relation">🔗 Relação (Chave 1:N)</option>
+                <option value="many_to_many">🔗 N:N (Muitos para Muitos - Tabela Pivô)</option>
                 <option value="boolean">Sim / Não</option>
             </select>
         </td>
         <td>
             <div class="col-options-select" style="display: none;">
-                <input type="text" name="fields[${idx}][options]" placeholder="Opção 1, Opção 2">
+                <input type="text" name="fields[${idx}][options]" placeholder="Opção 1, Opção 2" disabled>
             </div>
             <div class="col-options-relation" style="display: none;">
-                <select name="fields[${idx}][relation_target]" style="margin-bottom: 0.35rem;">
+                <select name="fields[${idx}][relation_target]" style="margin-bottom: 0.35rem;" disabled>
                     ${relationOptionsHtml}
                 </select>
-                <select name="fields[${idx}][relation_on_delete]" title="Ação ao Excluir o Registro Pai" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;">
+                <select name="fields[${idx}][relation_on_delete]" title="Ação ao Excluir o Registro Pai" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" disabled>
                     <option value="restrict" selected>🔒 Bloquear (Restrict)</option>
                     <option value="set_null">⚪ Desvincular (Set Null)</option>
                     <option value="cascade">💥 Em Cascata (Cascade)</option>
                 </select>
+            </div>
+            <div class="col-options-many-to-many" style="display: none;">
+                <select name="fields[${idx}][relation_target]" style="margin-bottom: 0.35rem;" disabled>
+                    <option value="">Vincular a (Entidade N:N)...</option>
+                    ${relationOptionsHtml.replace('<option value="">Vincular a...</option>', '')}
+                </select>
+                <input type="text" name="fields[${idx}][pivot_file]" placeholder="Arquivo pivô (ex: pivot.csv)" style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" title="Opcional: nome do arquivo CSV pivô" disabled>
             </div>
             <span class="cell-muted-dash">—</span>
         </td>

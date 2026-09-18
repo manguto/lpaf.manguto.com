@@ -697,9 +697,28 @@ $manutencoes = [
 $storage->write('manutencoes.csv', $manutencoesHeaders, $manutencoes);
 
 // -----------------------------------------------------------------------------
-// 7. AUDITORIA E BACKUP DE DEMONSTRAÇÃO
+// 7. RELACIONAMENTO N:N COM TABELA PIVÔ (projeto_equipamentos.csv)
 // -----------------------------------------------------------------------------
-echo "[7/7] Gerando Histórico de Auditoria e Snapshot de Backup...\n";
+echo "[7/8] Populando Tabela Pivô N:N: Projetos <-> Equipamentos (10 associações)...\n";
+$pivotHeaders = ['id', 'created_at', 'projeto_id', 'equipamento_id'];
+$projetoEquipamentos = [
+    ['id' => 'pe_001', 'created_at' => $lastMonth, 'projeto_id' => 'pro_001', 'equipamento_id' => 'eqp_001'],
+    ['id' => 'pe_002', 'created_at' => $lastMonth, 'projeto_id' => 'pro_001', 'equipamento_id' => 'eqp_003'],
+    ['id' => 'pe_003', 'created_at' => $lastMonth, 'projeto_id' => 'pro_001', 'equipamento_id' => 'eqp_004'],
+    ['id' => 'pe_004', 'created_at' => $lastMonth, 'projeto_id' => 'pro_002', 'equipamento_id' => 'eqp_003'],
+    ['id' => 'pe_005', 'created_at' => $lastMonth, 'projeto_id' => 'pro_002', 'equipamento_id' => 'eqp_004'],
+    ['id' => 'pe_006', 'created_at' => $lastMonth, 'projeto_id' => 'pro_003', 'equipamento_id' => 'eqp_002'],
+    ['id' => 'pe_007', 'created_at' => $lastWeek,  'projeto_id' => 'pro_004', 'equipamento_id' => 'eqp_002'],
+    ['id' => 'pe_008', 'created_at' => $lastWeek,  'projeto_id' => 'pro_004', 'equipamento_id' => 'eqp_004'],
+    ['id' => 'pe_009', 'created_at' => $lastWeek,  'projeto_id' => 'pro_005', 'equipamento_id' => 'eqp_001'],
+    ['id' => 'pe_010', 'created_at' => $lastWeek,  'projeto_id' => 'pro_005', 'equipamento_id' => 'eqp_005'],
+];
+$storage->write('projeto_equipamentos.csv', $pivotHeaders, $projetoEquipamentos);
+
+// -----------------------------------------------------------------------------
+// 8. AUDITORIA E BACKUP DE DEMONSTRAÇÃO
+// -----------------------------------------------------------------------------
+echo "[8/8] Gerando Histórico de Auditoria e Snapshot de Backup...\n";
 $auditHeaders = ['id', 'created_at', 'user_id', 'action', 'details'];
 $auditRows = [
     ['id' => 'aud_20260818100000_a001', 'created_at' => $lastMonth, 'user_id' => 'usr_001', 'action' => 'setup_completed', 'details' => 'Instalação inicial do framework'],
@@ -731,6 +750,7 @@ echo "  * Projetos: " . count($projetos) . " registros (vinculados a Clientes co
 echo "  * Tarefas: " . count($tarefas) . " registros (vinculadas a Projetos com on_delete: cascade)\n";
 echo "  * Equipamentos: " . count($equipamentos) . " registros (Notebooks, Servidores, Switches, etc.)\n";
 echo "  * Manutenções: " . count($manutencoes) . " registros (com custos, técnicos e histórico)\n";
+echo "  * Tabela Pivô N:N: " . count($projetoEquipamentos) . " associações (Projetos <-> Equipamentos em projeto_equipamentos.csv)\n";
 echo "  * Auditoria: " . count($auditRows) . " eventos registrados em storage/logs/audit_log.csv\n";
 echo "  * Snapshot de Backup: " . $backupId . " gerado em storage/backups/\n\n";
 
@@ -753,4 +773,5 @@ echo "  4. Exclusão em cascata: Abra o Projeto 'Portal de Telemetria' (possui 3
 echo "  5. Filtros por relação: Na listagem de Projetos, clique no badge do Cliente.\n";
 echo "  6. Dev-End: Acesse /dev/backups e /dev/logs para ver o histórico e o snapshot.\n";
 echo "  7. RBAC: Faça login com 'carlos' para verificar a interface com permissões restritas.\n";
+echo "  8. Relacionamento N:N: Abra o Projeto 'pro_001' e veja seus múltiplos Equipamentos; abra o Equipamento 'eqp_003' e veja na Visão 360° os Projetos que o utilizam.\n";
 echo str_repeat('=', 78) . "\n\n";

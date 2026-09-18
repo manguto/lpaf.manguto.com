@@ -118,6 +118,28 @@
                             <?php else: ?>
                                 <span class="muted">—</span>
                             <?php endif; ?>
+                        <?php elseif ($type === 'many_to_many'): ?>
+                            <?php
+                            $m2mData = $manyToMany[$key] ?? null;
+                            $selectedIds = $m2mData['selected'] ?? [];
+                            $targetSlug = $m2mData['target'] ?? '';
+                            $itemMap = $m2mData['map'] ?? [];
+                            ?>
+                            <?php if (!empty($selectedIds)): ?>
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;">
+                                    <?php foreach ($selectedIds as $sId): ?>
+                                        <a href="<?= url($app, '/app/' . $targetSlug . '/' . $sId) ?>" 
+                                           class="badge badge-primary" 
+                                           style="text-decoration: none; padding: 0.3rem 0.6rem; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.35rem;"
+                                           title="Ver detalhes de <?= e($itemMap[$sId] ?? $sId) ?>">
+                                            <span>🔗 <?= e($itemMap[$sId] ?? $sId) ?></span>
+                                            <code style="font-size: 0.72rem; opacity: 0.85; background: rgba(0,0,0,0.2); padding: 0.1rem 0.3rem; border-radius: 3px;"><?= e($sId) ?></code>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <span class="muted">— Nenhum vínculo associado —</span>
+                            <?php endif; ?>
                         <?php elseif ($type === 'text'): ?>
                             <div style="white-space: pre-wrap;"><?= e($val ?: '-') ?></div>
                         <?php else: ?>
@@ -138,9 +160,9 @@
     </table>
 </div>
 
-<?php if (!empty($childRelations)): ?>
+<?php if (!empty($childRelations) || !empty($reverseManyToMany)): ?>
     <div style="margin-top: 2rem; max-width: 960px;">
-        <h2 style="font-size: 1.35rem; margin-bottom: 1.25rem;">Registros Vinculados</h2>
+        <h2 style="font-size: 1.35rem; margin-bottom: 1.25rem;">Registros Vinculados (Visão 360°)</h2>
         
         <?php foreach ($childRelations as $child): ?>
             <?php 
@@ -228,5 +250,87 @@
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
+
+        <?php if (!empty($reverseManyToMany)): ?>
+            <?php foreach ($reverseManyToMany as $rev): ?>
+                <?php 
+                $rMod = $rev['module']; 
+                $rItems = $rev['items'];
+                $rFields = $rev['display_fields'];
+                ?>
+                <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <span style="font-size: 1.25rem;"><?= e($rMod['icon'] ?? '📁') ?></span>
+                            <h3 style="font-size: 1.1rem; margin: 0; font-weight: 700; color: var(--text-main);">
+                                <?= e($rMod['name']) ?>
+                            </h3>
+                            <span class="badge badge-gray" style="font-size: 0.75rem;"><?= count($rItems) ?></span>
+                            <span class="badge badge-primary" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;" title="Relacionamento N:N via tabela pivô">🔗 N:N Tabela Pivô</span>
+                            <span class="muted" style="font-size: 0.8rem;">(campo: <code><?= e($rev['field_label']) ?></code>)</span>
+                        </div>
+                        <?php if (can($app, ($rMod['permission_prefix'] ?? $rMod['slug']) . '.create')): ?>
+                            <a class="btn btn-secondary btn-sm" href="<?= url($app, '/app/' . $rMod['slug'] . '/create') ?>">
+                                + Novo(a) <?= e($rMod['entity']) ?>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if (empty($rItems)): ?>
+                        <p class="muted" style="font-size: 0.875rem; margin-bottom: 0;">
+                            Nenhum registro de <strong><?= e($rMod['name']) ?></strong> está associado a este(a) <?= e($module['entity']) ?> no momento.
+                        </p>
+                    <?php else: ?>
+                        <div class="table-container" style="margin-bottom: 0; box-shadow: none;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px;">ID</th>
+                                        <?php foreach ($rFields as $rkey => $rf): ?>
+                                            <th><?= e($rf['label'] ?? ucfirst($rkey)) ?></th>
+                                        <?php endforeach; ?>
+                                        <th style="text-align: right; min-width: 130px;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($rItems as $ri): ?>
+                                        <tr>
+                                            <td><code><?= e($ri['id'] ?? '') ?></code></td>
+                                            <?php foreach ($rFields as $rkey => $rf): ?>
+                                                <?php 
+                                                $rval = (string) ($ri[$rkey] ?? ''); 
+                                                $rtype = $rf['type'] ?? 'string';
+                                                ?>
+                                                <td>
+                                                    <?php if ($rtype === 'boolean'): ?>
+                                                        <span class="badge <?= ($rval === '1' || $rval === 'true') ? 'badge-success' : 'badge-danger' ?>">
+                                                            <?= ($rval === '1' || $rval === 'true') ? 'Sim' : 'Não' ?>
+                                                        </span>
+                                                    <?php elseif ($rtype === 'select'): ?>
+                                                        <span class="badge badge-gray"><?= e($rval ?: '-') ?></span>
+                                                    <?php else: ?>
+                                                        <?= e($rval ?: '-') ?>
+                                                    <?php endif; ?>
+                                                </td>
+                                            <?php endforeach; ?>
+                                            <td style="text-align: right; white-space: nowrap;">
+                                                <a class="btn btn-secondary btn-sm" href="<?= url($app, '/app/' . $rMod['slug'] . '/' . $ri['id']) ?>">
+                                                    Ver
+                                                </a>
+                                                <?php if (can($app, ($rMod['permission_prefix'] ?? $rMod['slug']) . '.edit')): ?>
+                                                    <a class="btn btn-secondary btn-sm" href="<?= url($app, '/app/' . $rMod['slug'] . '/' . $ri['id'] . '/edit') ?>">
+                                                        Editar
+                                                    </a>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 <?php endif; ?>

@@ -426,13 +426,180 @@ if ($cliRepo->find('cli_001') !== null) {
     throw new RuntimeException('Falha ao remover pai após exclusão em cascata do filho.');
 }
 
-// Limpeza dos módulos de teste de relacionamento
+// Limpeza dos módulos de teste de relacionamento 1:N
 unlink($clientesDir . '/module.php');
 rmdir($clientesDir);
 unlink($contratosDir . '/module.php');
 rmdir($contratosDir);
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos) e Relacionamentos entre Entidades (1:N com integridade referencial e políticas on_delete: restrict, set_null e cascade).\n";
+// =============================================================================
+// TESTE DE RELACIONAMENTOS N:N COM TABELAS PIVÔ DECLARATIVAS (Item 19)
+// =============================================================================
+$projetosTestDir = $root . '/modules/projetos_test';
+$equipamentosTestDir = $root . '/modules/equipamentos_test';
+mkdir($projetosTestDir, 0775, true);
+mkdir($equipamentosTestDir, 0775, true);
+
+$equipamentosConfig = [
+    'name' => 'Equipamentos Teste',
+    'entity' => 'Equipamento Teste',
+    'slug' => 'equipamentos_test',
+    'prefix' => 'eqt',
+    'storage' => 'equipamentos_test.csv',
+    'permission_prefix' => 'equipamentos_test',
+    'fields' => [
+        'nome' => [
+            'label' => 'Nome do Equipamento',
+            'type' => 'string',
+            'required' => true,
+            'list' => true,
+        ],
+    ],
+];
+file_put_contents($equipamentosTestDir . '/module.php', "<?php\nreturn " . var_export($equipamentosConfig, true) . ";\n");
+
+$projetosConfig = [
+    'name' => 'Projetos Teste',
+    'entity' => 'Projeto Teste',
+    'slug' => 'projetos_test',
+    'prefix' => 'prt',
+    'storage' => 'projetos_test.csv',
+    'permission_prefix' => 'projetos_test',
+    'fields' => [
+        'nome' => [
+            'label' => 'Nome do Projeto',
+            'type' => 'string',
+            'required' => true,
+            'list' => true,
+        ],
+        'equipamentos' => [
+            'label' => 'Equipamentos Alocados',
+            'type' => 'many_to_many',
+            'target' => 'equipamentos_test',
+            'display' => 'nome',
+            'pivot_file' => 'projeto_equipamentos_test.csv',
+            'parent_key' => 'projeto_id',
+            'target_key' => 'equipamento_id',
+            'required' => false,
+            'list' => true,
+        ],
+    ],
+];
+file_put_contents($projetosTestDir . '/module.php', "<?php\nreturn " . var_export($projetosConfig, true) . ";\n");
+
+$app->modules->reload();
+
+// Cria repositórios e registros de teste
+$eqpRepo = $app->modules->repository('equipamentos_test');
+$eqp1 = $eqpRepo->insert(['id' => $eqpRepo->nextId(), 'nome' => 'Servidor Cloud', 'created_at' => date('c'), 'updated_at' => date('c')]);
+$eqp2 = $eqpRepo->insert(['id' => $eqpRepo->nextId(), 'nome' => 'Switch Core 10G', 'created_at' => date('c'), 'updated_at' => date('c')]);
+$eqp3 = $eqpRepo->insert(['id' => $eqpRepo->nextId(), 'nome' => 'Firewall UTM', 'created_at' => date('c'), 'updated_at' => date('c')]);
+
+$prtRepo = $app->modules->repository('projetos_test');
+$prt1 = $prtRepo->insert(['id' => $prtRepo->nextId(), 'nome' => 'Infraestrutura Central', 'created_at' => date('c'), 'updated_at' => date('c')]);
+$prt2 = $prtRepo->insert(['id' => $prtRepo->nextId(), 'nome' => 'Segurança de Borda', 'created_at' => date('c'), 'updated_at' => date('c')]);
+
+// 1. Testa sincronização N:N (syncManyToMany)
+$syncMethod = new ReflectionMethod($crudCtrl, 'syncManyToMany');
+$syncMethod->setAccessible(true);
+
+// Simula request selecionando eqp1 e eqp2 para prt1
+$_POST_BACKUP = $_POST;
+$_POST = ['equipamentos' => [$eqp1['id'], $eqp2['id']]];
+$reqSync1 = new Request();
+$syncMethod->invokeArgs($crudCtrl, [$projetosConfig, $prt1['id'], $reqSync1]);
+
+// Simula request selecionando eqp2 e eqp3 para prt2
+$_POST = ['equipamentos' => [$eqp2['id'], $eqp3['id']]];
+$reqSync2 = new Request();
+$syncMethod->invokeArgs($crudCtrl, [$projetosConfig, $prt2['id'], $reqSync2]);
+$_POST = $_POST_BACKUP;
+
+// Verifica conteúdo persistido no arquivo pivô CSV
+if (!$app->storage->exists('projeto_equipamentos_test.csv')) {
+    throw new RuntimeException('Arquivo pivô projeto_equipamentos_test.csv não foi criado.');
+}
+$pivotRows = $app->storage->read('projeto_equipamentos_test.csv');
+if (count($pivotRows) !== 4) {
+    throw new RuntimeException('Contagem incorreta de linhas na tabela pivô (esperado 4, obtido ' . count($pivotRows) . ').');
+}
+
+// 2. Testa resolução N:N direta (resolveManyToMany)
+$resolveM2mMethod = new ReflectionMethod($crudCtrl, 'resolveManyToMany');
+$resolveM2mMethod->setAccessible(true);
+$resolvedPrt1 = $resolveM2mMethod->invokeArgs($crudCtrl, [$projetosConfig, $prt1['id']]);
+
+if (!isset($resolvedPrt1['equipamentos'])) {
+    throw new RuntimeException('Campo equipamentos não resolvido por resolveManyToMany.');
+}
+if ($resolvedPrt1['equipamentos']['selected'] !== [$eqp1['id'], $eqp2['id']]) {
+    throw new RuntimeException('IDs selecionados incorretos em resolveManyToMany para prt1.');
+}
+
+// 3. Testa resolução reversa N:N (resolveReverseManyToMany)
+$resolveRevM2mMethod = new ReflectionMethod($crudCtrl, 'resolveReverseManyToMany');
+$resolveRevM2mMethod->setAccessible(true);
+$resolvedRevEqp2 = $resolveRevM2mMethod->invokeArgs($crudCtrl, [$equipamentosConfig, $eqp2['id']]);
+
+if (empty($resolvedRevEqp2)) {
+    throw new RuntimeException('resolveReverseManyToMany não retornou referências reversas para eqp2.');
+}
+$revItems = $resolvedRevEqp2[0]['items'] ?? [];
+$revIds = array_column($revItems, 'id');
+if (count($revIds) !== 2 || !in_array($prt1['id'], $revIds, true) || !in_array($prt2['id'], $revIds, true)) {
+    throw new RuntimeException('resolveReverseManyToMany não identificou ambos os projetos vinculados ao eqp2.');
+}
+
+// 4. Testa atualização N:N (desvinculando eqp1 e vinculando eqp3 ao prt1)
+$_POST = ['equipamentos' => [$eqp2['id'], $eqp3['id']]];
+$reqUpdate1 = new Request();
+$syncMethod->invokeArgs($crudCtrl, [$projetosConfig, $prt1['id'], $reqUpdate1]);
+$_POST = $_POST_BACKUP;
+
+$resolvedPrt1Updated = $resolveM2mMethod->invokeArgs($crudCtrl, [$projetosConfig, $prt1['id']]);
+if ($resolvedPrt1Updated['equipamentos']['selected'] !== [$eqp2['id'], $eqp3['id']]) {
+    throw new RuntimeException('Falha na atualização de vínculos N:N via syncManyToMany.');
+}
+
+// 5. Testa limpeza de registros pivô ao excluir entidade (cleanupManyToManyOnDelete)
+$cleanupMethod = new ReflectionMethod($crudCtrl, 'cleanupManyToManyOnDelete');
+$cleanupMethod->setAccessible(true);
+
+// Exclui prt1 e executa cleanupManyToManyOnDelete
+$prtRepo->delete($prt1['id']);
+$cleanupMethod->invokeArgs($crudCtrl, ['projetos_test', $prt1['id']]);
+
+$pivotRowsAfterPrtDelete = $app->storage->read('projeto_equipamentos_test.csv');
+// Devem sobrar apenas os 2 vínculos de prt2 (eqp2 e eqp3)
+if (count($pivotRowsAfterPrtDelete) !== 2) {
+    throw new RuntimeException('Falha no cleanupManyToManyOnDelete ao excluir pai: esperado 2 linhas na tabela pivô, obtido ' . count($pivotRowsAfterPrtDelete));
+}
+foreach ($pivotRowsAfterPrtDelete as $pRow) {
+    if (($pRow['projeto_id'] ?? '') === $prt1['id']) {
+        throw new RuntimeException('Linha órfã do projeto excluído encontrada na tabela pivô.');
+    }
+}
+
+// Exclui eqp3 (alvo referenciado) e executa cleanupManyToManyOnDelete
+$eqpRepo->delete($eqp3['id']);
+$cleanupMethod->invokeArgs($crudCtrl, ['equipamentos_test', $eqp3['id']]);
+
+$pivotRowsAfterEqpDelete = $app->storage->read('projeto_equipamentos_test.csv');
+// Deve sobrar apenas 1 vínculo: prt2 -> eqp2
+if (count($pivotRowsAfterEqpDelete) !== 1) {
+    throw new RuntimeException('Falha no cleanupManyToManyOnDelete ao excluir alvo referenciado: esperado 1 linha, obtido ' . count($pivotRowsAfterEqpDelete));
+}
+if (($pivotRowsAfterEqpDelete[0]['equipamento_id'] ?? '') !== $eqp2['id']) {
+    throw new RuntimeException('Vínculo incorreto remanescente na tabela pivô após exclusão do equipamento.');
+}
+
+// Limpeza dos módulos temporários de teste N:N
+unlink($projetosTestDir . '/module.php');
+rmdir($projetosTestDir);
+unlink($equipamentosTestDir . '/module.php');
+rmdir($equipamentosTestDir);
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade) e Relacionamentos N:N com Tabelas Pivô Declarativas (sync, resolve, reverse 360 e cascade cleanup).\n";
 
 
 

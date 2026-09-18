@@ -101,6 +101,216 @@ final class GenericCrudController extends Controller
         return $reverse;
     }
 
+    private function resolveManyToMany(array $module, ?string $recordId = null): array
+    {
+        $m2m = [];
+        foreach ($module['fields'] as $key => $f) {
+            if (($f['type'] ?? '') === 'many_to_many') {
+                $targetSlug = $f['target'] ?? '';
+                $targetModule = $this->app->modules->get($targetSlug);
+                $targetRepo = $this->app->modules->repository($targetSlug);
+                $rows = $targetRepo ? $targetRepo->all() : [];
+                $displayField = $f['display'] ?? '';
+
+                $items = [];
+                foreach ($rows as $row) {
+                    $label = '';
+                    if ($displayField !== '' && isset($row[$displayField])) {
+                        $label = (string) $row[$displayField];
+                    } else {
+                        $label = (string) ($row['nome'] ?? $row['name'] ?? $row['title'] ?? $row['titulo'] ?? $row['razao_social'] ?? $row['id']);
+                    }
+                    $items[] = [
+                        'id' => (string) ($row['id'] ?? ''),
+                        'label' => $label,
+                    ];
+                }
+
+                $pivotFile = $f['pivot_file'] ?? ($module['slug'] . '_' . $targetSlug . '.csv');
+                $parentKey = $f['parent_key'] ?? (rtrim($module['slug'], 's') . '_id');
+                $targetKey = $f['target_key'] ?? (rtrim($targetSlug, 's') . '_id');
+
+                $selected = [];
+                if ($recordId !== null && $this->app->storage->exists($pivotFile)) {
+                    $pivotRows = $this->app->storage->read($pivotFile);
+                    foreach ($pivotRows as $pRow) {
+                        if (($pRow[$parentKey] ?? '') === $recordId) {
+                            $val = (string) ($pRow[$targetKey] ?? '');
+                            if ($val !== '') {
+                                $selected[] = $val;
+                            }
+                        }
+                    }
+                }
+
+                $m2m[$key] = [
+                    'target' => $targetSlug,
+                    'target_entity' => $targetModule['entity'] ?? ucfirst($targetSlug),
+                    'target_name' => $targetModule['name'] ?? ucfirst($targetSlug),
+                    'pivot_file' => $pivotFile,
+                    'parent_key' => $parentKey,
+                    'target_key' => $targetKey,
+                    'items' => $items,
+                    'map' => array_column($items, 'label', 'id'),
+                    'selected' => $selected,
+                ];
+            }
+        }
+        return $m2m;
+    }
+
+    private function resolveReverseManyToMany(array $module, string $targetId): array
+    {
+        $currentSlug = $module['slug'];
+        $allModules = $this->app->modules->all();
+        $reverse = [];
+
+        foreach ($allModules as $parentSlug => $parentModule) {
+            foreach (($parentModule['fields'] ?? []) as $fKey => $fConfig) {
+                if (($fConfig['type'] ?? '') === 'many_to_many' && ($fConfig['target'] ?? '') === $currentSlug) {
+                    $pivotFile = $fConfig['pivot_file'] ?? ($parentSlug . '_' . $currentSlug . '.csv');
+                    $parentKey = $fConfig['parent_key'] ?? (rtrim($parentSlug, 's') . '_id');
+                    $targetKey = $fConfig['target_key'] ?? (rtrim($currentSlug, 's') . '_id');
+
+                    if (!$this->app->storage->exists($pivotFile)) {
+                        continue;
+                    }
+
+                    $pivotRows = $this->app->storage->read($pivotFile);
+                    $matchedParentIds = [];
+                    foreach ($pivotRows as $pRow) {
+                        if (($pRow[$targetKey] ?? '') === $targetId) {
+                            $pId = (string) ($pRow[$parentKey] ?? '');
+                            if ($pId !== '') {
+                                $matchedParentIds[] = $pId;
+                            }
+                        }
+                    }
+
+                    $parentRepo = $this->app->modules->repository($parentSlug);
+                    $parentRows = $parentRepo ? $parentRepo->all() : [];
+                    $matchingItems = array_values(array_filter(
+                        $parentRows,
+                        fn($r) => in_array((string) ($r['id'] ?? ''), $matchedParentIds, true)
+                    ));
+
+                    $displayFields = [];
+                    foreach (($parentModule['fields'] ?? []) as $k => $cfg) {
+                        if (($cfg['type'] ?? '') !== 'many_to_many' && (!isset($cfg['list']) || $cfg['list'] === true)) {
+                            $displayFields[$k] = $cfg;
+                        }
+                    }
+
+                    $reverse[] = [
+                        'module' => $parentModule,
+                        'field_key' => $fKey,
+                        'field_label' => $fConfig['label'] ?? ucfirst($fKey),
+                        'items' => $matchingItems,
+                        'display_fields' => $displayFields,
+                    ];
+                }
+            }
+        }
+        return $reverse;
+    }
+
+    private function syncManyToMany(array $module, string $parentId, Request $request): void
+    {
+        foreach ($module['fields'] as $field => $config) {
+            if (($config['type'] ?? '') === 'many_to_many') {
+                $rawInput = $request->input($field);
+                $selectedIds = is_array($rawInput) ? $rawInput : ($rawInput !== null && $rawInput !== '' ? [(string) $rawInput] : []);
+                $selectedIds = array_values(array_unique(array_filter(
+                    array_map('trim', array_map('strval', $selectedIds)),
+                    fn($id) => $id !== ''
+                )));
+
+                $targetSlug = $config['target'] ?? '';
+                $targetRepo = $this->app->modules->repository($targetSlug);
+                $validIds = [];
+                if ($targetRepo) {
+                    foreach ($selectedIds as $tgtId) {
+                        if ($targetRepo->find($tgtId)) {
+                            $validIds[] = $tgtId;
+                        }
+                    }
+                }
+
+                $pivotFile = $config['pivot_file'] ?? ($module['slug'] . '_' . $targetSlug . '.csv');
+                $parentKey = $config['parent_key'] ?? (rtrim($module['slug'], 's') . '_id');
+                $targetKey = $config['target_key'] ?? (rtrim($targetSlug, 's') . '_id');
+                $pivotHeaders = [$parentKey, $targetKey];
+
+                $existingRows = $this->app->storage->exists($pivotFile) ? $this->app->storage->read($pivotFile) : [];
+                $remainingRows = array_values(array_filter(
+                    $existingRows,
+                    fn($r) => ($r[$parentKey] ?? '') !== $parentId
+                ));
+
+                foreach ($validIds as $tgtId) {
+                    $remainingRows[] = [
+                        $parentKey => $parentId,
+                        $targetKey => $tgtId,
+                    ];
+                }
+
+                $this->app->storage->write($pivotFile, $pivotHeaders, $remainingRows);
+            }
+        }
+    }
+
+    private function cleanupManyToManyOnDelete(string $slug, string $id): int
+    {
+        $removedCount = 0;
+        $allModules = $this->app->modules->all();
+
+        // 1. Limpa tabelas pivot onde esta entidade é o parent
+        $currentModule = $allModules[$slug] ?? null;
+        if ($currentModule) {
+            foreach (($currentModule['fields'] ?? []) as $fKey => $fConfig) {
+                if (($fConfig['type'] ?? '') === 'many_to_many') {
+                    $targetSlug = $fConfig['target'] ?? '';
+                    $pivotFile = $fConfig['pivot_file'] ?? ($slug . '_' . $targetSlug . '.csv');
+                    $parentKey = $fConfig['parent_key'] ?? (rtrim($slug, 's') . '_id');
+                    $targetKey = $fConfig['target_key'] ?? (rtrim($targetSlug, 's') . '_id');
+
+                    if ($this->app->storage->exists($pivotFile)) {
+                        $rows = $this->app->storage->read($pivotFile);
+                        $initialCount = count($rows);
+                        $kept = array_values(array_filter($rows, fn($r) => ($r[$parentKey] ?? '') !== $id));
+                        if (count($kept) !== $initialCount) {
+                            $removedCount += ($initialCount - count($kept));
+                            $this->app->storage->write($pivotFile, [$parentKey, $targetKey], $kept);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Limpa tabelas pivot onde esta entidade é o target
+        foreach ($allModules as $parentSlug => $parentModule) {
+            foreach (($parentModule['fields'] ?? []) as $fKey => $fConfig) {
+                if (($fConfig['type'] ?? '') === 'many_to_many' && ($fConfig['target'] ?? '') === $slug) {
+                    $pivotFile = $fConfig['pivot_file'] ?? ($parentSlug . '_' . $slug . '.csv');
+                    $parentKey = $fConfig['parent_key'] ?? (rtrim($parentSlug, 's') . '_id');
+                    $targetKey = $fConfig['target_key'] ?? (rtrim($slug, 's') . '_id');
+
+                    if ($this->app->storage->exists($pivotFile)) {
+                        $rows = $this->app->storage->read($pivotFile);
+                        $initialCount = count($rows);
+                        $kept = array_values(array_filter($rows, fn($r) => ($r[$targetKey] ?? '') !== $id));
+                        if (count($kept) !== $initialCount) {
+                            $removedCount += ($initialCount - count($kept));
+                            $this->app->storage->write($pivotFile, [$parentKey, $targetKey], $kept);
+                        }
+                    }
+                }
+            }
+        }
+
+        return $removedCount;
+    }
+
     private function resolveReverseReferenceCounts(array $module, array $items): array
     {
         $parentSlug = $module['slug'];
@@ -204,11 +414,51 @@ final class GenericCrudController extends Controller
 
         $reverseCounts = $this->resolveReverseReferenceCounts($module, $items);
 
+        $manyToManyMaps = [];
+        foreach (($module['fields'] ?? []) as $fKey => $fConfig) {
+            if (($fConfig['type'] ?? '') === 'many_to_many') {
+                $targetSlug = $fConfig['target'] ?? '';
+                $targetRepo = $this->app->modules->repository($targetSlug);
+                $displayField = $fConfig['display'] ?? '';
+                $targetItems = [];
+                if ($targetRepo) {
+                    foreach ($targetRepo->all() as $tRow) {
+                        $tId = (string) ($tRow['id'] ?? '');
+                        $label = '';
+                        if ($displayField !== '' && isset($tRow[$displayField])) {
+                            $label = (string) $tRow[$displayField];
+                        } else {
+                            $label = (string) ($tRow['nome'] ?? $tRow['name'] ?? $tRow['title'] ?? $tRow['titulo'] ?? $tRow['razao_social'] ?? $tId);
+                        }
+                        $targetItems[$tId] = ['id' => $tId, 'label' => $label];
+                    }
+                }
+
+                $pivotFile = $fConfig['pivot_file'] ?? ($module['slug'] . '_' . $targetSlug . '.csv');
+                $parentKey = $fConfig['parent_key'] ?? (rtrim($module['slug'], 's') . '_id');
+                $targetKey = $fConfig['target_key'] ?? (rtrim($targetSlug, 's') . '_id');
+
+                $recordMap = [];
+                if ($this->app->storage->exists($pivotFile)) {
+                    $pRows = $this->app->storage->read($pivotFile);
+                    foreach ($pRows as $pRow) {
+                        $pId = (string) ($pRow[$parentKey] ?? '');
+                        $tId = (string) ($pRow[$targetKey] ?? '');
+                        if ($pId !== '' && $tId !== '' && isset($targetItems[$tId])) {
+                            $recordMap[$pId][] = $targetItems[$tId];
+                        }
+                    }
+                }
+                $manyToManyMaps[$fKey] = $recordMap;
+            }
+        }
+
         $this->view('crud/index', [
             'module' => $module,
             'items' => $items,
             'query' => $query,
             'relationMaps' => $relations,
+            'manyToManyMaps' => $manyToManyMaps,
             'reverseCounts' => $reverseCounts,
             'activeFilters' => $activeFilters,
         ]);
@@ -218,6 +468,7 @@ final class GenericCrudController extends Controller
     {
         $module = $this->resolveModule($request, $params);
         $relations = $this->resolveRelations($module);
+        $manyToMany = $this->resolveManyToMany($module);
 
         $prefill = [];
         foreach ($module['fields'] as $key => $f) {
@@ -232,6 +483,7 @@ final class GenericCrudController extends Controller
             'item' => !empty($prefill) ? $prefill : null,
             'isEdit' => false,
             'relations' => $relations,
+            'manyToMany' => $manyToMany,
         ]);
     }
 
@@ -243,9 +495,21 @@ final class GenericCrudController extends Controller
 
         $data = [];
         foreach ($module['fields'] as $field => $config) {
-            $val = $request->input($field);
             $type = $config['type'] ?? 'string';
             $label = $config['label'] ?? ucfirst($field);
+
+            if ($type === 'many_to_many') {
+                $rawInput = $request->input($field);
+                $selected = is_array($rawInput) ? $rawInput : ($rawInput !== null && $rawInput !== '' ? [(string) $rawInput] : []);
+                $selected = array_filter(array_map('strval', $selected), fn($s) => trim($s) !== '');
+                if (!empty($config['required']) && empty($selected)) {
+                    Session::flash('error', "O campo '{$label}' é obrigatório.");
+                    Response::redirect("/app/{$slug}/create");
+                }
+                continue;
+            }
+
+            $val = $request->input($field);
 
             if ($type === 'boolean') {
                 $val = $val ? '1' : '0';
@@ -284,6 +548,7 @@ final class GenericCrudController extends Controller
         $data['updated_at'] = $now;
 
         $repo->insert($data);
+        $this->syncManyToMany($module, $id, $request);
 
         (new AuditService($this->app->storage))->log(
             $slug . '_created',
@@ -307,13 +572,17 @@ final class GenericCrudController extends Controller
         }
 
         $relations = $this->resolveRelations($module);
+        $manyToMany = $this->resolveManyToMany($module, (string) ($item['id'] ?? ''));
         $childRelations = $this->resolveReverseRelations($module, (string) ($item['id'] ?? ''));
+        $reverseManyToMany = $this->resolveReverseManyToMany($module, (string) ($item['id'] ?? ''));
 
         $this->view('crud/show', [
             'module' => $module,
             'item' => $item,
             'relationMaps' => $relations,
+            'manyToMany' => $manyToMany,
             'childRelations' => $childRelations,
+            'reverseManyToMany' => $reverseManyToMany,
         ]);
     }
 
@@ -329,12 +598,14 @@ final class GenericCrudController extends Controller
         }
 
         $relations = $this->resolveRelations($module);
+        $manyToMany = $this->resolveManyToMany($module, (string) ($item['id'] ?? ''));
 
         $this->view('crud/form', [
             'module' => $module,
             'item' => $item,
             'isEdit' => true,
             'relations' => $relations,
+            'manyToMany' => $manyToMany,
         ]);
     }
 
@@ -352,9 +623,21 @@ final class GenericCrudController extends Controller
 
         $data = [];
         foreach ($module['fields'] as $field => $config) {
-            $val = $request->input($field);
             $type = $config['type'] ?? 'string';
             $label = $config['label'] ?? ucfirst($field);
+
+            if ($type === 'many_to_many') {
+                $rawInput = $request->input($field);
+                $selected = is_array($rawInput) ? $rawInput : ($rawInput !== null && $rawInput !== '' ? [(string) $rawInput] : []);
+                $selected = array_filter(array_map('strval', $selected), fn($s) => trim($s) !== '');
+                if (!empty($config['required']) && empty($selected)) {
+                    Session::flash('error', "O campo '{$label}' é obrigatório.");
+                    Response::redirect("/app/{$slug}/{$id}/edit");
+                }
+                continue;
+            }
+
+            $val = $request->input($field);
 
             if ($type === 'boolean') {
                 $val = $val ? '1' : '0';
@@ -389,6 +672,7 @@ final class GenericCrudController extends Controller
 
         $data['updated_at'] = date('c');
         $repo->update($id, $data);
+        $this->syncManyToMany($module, $id, $request);
 
         (new AuditService($this->app->storage))->log(
             $slug . '_updated',
@@ -516,7 +800,10 @@ final class GenericCrudController extends Controller
         $cascadeCount = 0;
         $this->executeRelationPolicies($slug, $id, $unlinkedCount, $cascadeCount);
 
-        // 3. Excluir o registro principal
+        // 3. Limpar associações em tabelas pivot N:N
+        $detachedPivotCount = $this->cleanupManyToManyOnDelete($slug, $id);
+
+        // 4. Excluir o registro principal
         $repo->delete($id);
         (new AuditService($this->app->storage))->log(
             $slug . '_deleted',
@@ -524,13 +811,16 @@ final class GenericCrudController extends Controller
             "ID: {$id}"
         );
 
-        // 4. Feedback detalhado para o usuário
+        // 5. Feedback detalhado para o usuário
         $details = [];
         if ($cascadeCount > 0) {
             $details[] = "{$cascadeCount} registro(s) dependente(s) excluído(s) em cascata";
         }
         if ($unlinkedCount > 0) {
             $details[] = "{$unlinkedCount} registro(s) desvinculado(s)";
+        }
+        if ($detachedPivotCount > 0) {
+            $details[] = "{$detachedPivotCount} vínculo(s) N:N desassociado(s)";
         }
 
         $successMsg = "{$module['entity']} excluído com sucesso.";
