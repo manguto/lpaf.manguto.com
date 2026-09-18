@@ -1223,5 +1223,45 @@ upstream  https://github.com/manguto/lpaf.manguto.com.git (fetch & push)
 > [!TIP]
 > **Isolamento arquitetural:** Como o LPAF organiza módulos personalizados em diretórios independentes (`modules/`) e dados em `storage/data/`, as atualizações do motor central (`app/`, `public/`, etc.) são incorporadas via merge sem sobrescrever as entidades e regras de negócio do seu novo sistema.
 
+#### 3. Referência rápida de comandos (sequenciais e opcionais)
+
+##### Comandos Sequenciais (Setup e rotina essencial)
+1. **Redirecionar o repositório principal para o seu novo sistema:**
+   ```bash
+   git remote set-url origin https://github.com/seu-usuario/meu-novo-sistema.git
+   ```
+2. **Conectar o repositório do LPAF oficial como upstream:**
+   ```bash
+   git remote add upstream https://github.com/manguto/lpaf.manguto.com.git
+   ```
+3. **Enviar o código inicial para o seu novo repositório:**
+   ```bash
+   git push -u origin master
+   ```
+4. **Puxar melhorias e patches do LPAF quando houver:**
+   ```bash
+   git pull upstream master
+   ```
+
+##### Comandos Opcionais e de Diagnóstico
+* **Conferir os remotos configurados:**
+  ```bash
+  git remote -v
+  ```
+* **Consultar novidades do LPAF antes de aplicar o merge:**
+  ```bash
+  git fetch upstream
+  git log HEAD..upstream/master --oneline
+  ```
+* **Enviar correções de volta para o LPAF oficial (mantenedores/colaboradores):**
+  ```bash
+  git push upstream master
+  ```
+* **Desconectar o LPAF (caso queira interromper sincronizações futuras):**
+  ```bash
+  git remote remove upstream
+  ```
+
+
 
 
