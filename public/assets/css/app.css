@@ -392,6 +392,57 @@ input[type="radio"] {
     background-color: #e2e8f0;
 }
 
+.permission-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+
+.permission-item:hover {
+    background-color: #e2e8f0;
+}
+
+.permission-item label {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.permission-preview-btn {
+    text-decoration: none;
+    font-size: 0.725rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--info-bg);
+    color: var(--info-text);
+    border: 1px solid rgba(2, 132, 199, 0.3);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.permission-preview-btn:hover {
+    background-color: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
+    transform: translateY(-1px);
+}
+
 /* Botões */
 button,
 .button,

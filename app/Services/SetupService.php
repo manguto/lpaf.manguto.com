@@ -16,7 +16,7 @@ final class SetupService
         $storage = $this->app->storage;
         $permissions = ['*', 'dashboard.view', 'profile.edit', 'users.view', 'users.create', 'users.edit', 'users.manage', 'roles.view', 'roles.create', 'roles.edit', 'roles.manage', 'settings.manage', 'audit.view', 'dev.access', 'dev.logs', 'dev.settings'];
         $permissionRows = [];
-        foreach ($permissions as $id) $permissionRows[] = ['id' => $id, 'name' => $id, 'description' => $id === '*' ? 'Acesso integral' : 'Permissão ' . $id];
+        foreach ($permissions as $id) $permissionRows[] = ['id' => $id, 'name' => $id, 'description' => $this->app->permissions->friendlyDescription($id, $id === '*' ? 'Acesso integral' : 'Permissão ' . $id)];
         $storage->write('permissions.csv', ['id', 'name', 'description'], $permissionRows);
         $roles = [['id' => 'role_user', 'name' => 'Usuário', 'description' => 'Acesso básico', 'protected' => '1', 'created_at' => $now, 'updated_at' => $now], ['id' => 'role_admin', 'name' => 'Administrador', 'description' => 'Acesso administrativo', 'protected' => '1', 'created_at' => $now, 'updated_at' => $now], ['id' => 'role_dev', 'name' => 'Desenvolvedor', 'description' => 'Acesso integral', 'protected' => '1', 'created_at' => $now, 'updated_at' => $now]];
         $storage->write('roles.csv', ['id', 'name', 'description', 'protected', 'created_at', 'updated_at'], $roles);

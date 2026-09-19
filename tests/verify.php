@@ -925,7 +925,33 @@ if (empty($completeLogs)) {
 // Retorna política ao modo livre
 $policyService->updatePolicy(['enabled' => '0', 'min_length' => '1'], 'usr_001');
 
-echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas, Busca Assistida / Autocomplete (Item 20), Rate Limiting (Força Bruta), Proteção .htaccess, Licença MIT, Arquitetura Clean Slate, Governança de Política de Senhas (Dev-End) e Recuperação de Senhas (Esqueci Minha Senha).\n";
+// 13. Teste de Resolução de Rotas e Descrições de Permissões
+if ($app->permissions->resolveRoute('dashboard.view', $app) !== '/app') {
+    throw new RuntimeException('Falha na resolução de rota para dashboard.view.');
+}
+if ($app->permissions->resolveRoute('users.view', $app) !== '/admin/users') {
+    throw new RuntimeException('Falha na resolução de rota para users.view.');
+}
+if ($app->permissions->resolveRoute('users.create', $app) !== '/admin/users/create') {
+    throw new RuntimeException('Falha na resolução de rota para users.create.');
+}
+if ($app->permissions->resolveRoute('roles.view', $app) !== '/admin/roles') {
+    throw new RuntimeException('Falha na resolução de rota para roles.view.');
+}
+if ($app->permissions->resolveRoute('dev.access', $app) !== '/dev') {
+    throw new RuntimeException('Falha na resolução de rota para dev.access.');
+}
+if ($app->permissions->resolveRoute('clientes.view', $app) !== '/app/clientes') {
+    throw new RuntimeException('Falha na resolução de rota de módulo para clientes.view.');
+}
+if ($app->permissions->resolveRoute('clientes.create', $app) !== '/app/clientes/create') {
+    throw new RuntimeException('Falha na resolução de rota de módulo para clientes.create.');
+}
+if (empty($app->permissions->friendlyDescription('users.view', '', $app))) {
+    throw new RuntimeException('friendlyDescription não deveria ser vazia.');
+}
+
+echo "Verificação OK: setup, CSV, hash de senha, RBAC, Backups, Auditoria, Perfil, Motor de Módulos, Entity Builder (criação, edição e reordenação de campos), Relacionamentos 1:N (restrict, set_null, cascade), Relacionamentos N:N com Tabelas Pivô Declarativas, Busca Assistida / Autocomplete (Item 20), Rate Limiting (Força Bruta), Proteção .htaccess, Licença MIT, Arquitetura Clean Slate, Governança de Política de Senhas (Dev-End), Recuperação de Senhas (Esqueci Minha Senha) e Resolução Prática de Rotas de Permissões.\n";
 
 
 

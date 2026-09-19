@@ -31,14 +31,35 @@ if ($edit) {
         <textarea id="description" name="description" rows="2" placeholder="Finalidade deste perfil"><?= e($edit['description'] ?? '') ?></textarea>
 
         <div style="margin-top: 1.5rem;">
-            <label style="margin-bottom: 0.5rem;">Permissões de Acesso</label>
-            <div class="checkbox-group" style="max-height: 280px;">
-                <?php foreach ($permissions as $permission): ?>
-                    <label>
-                        <input type="checkbox" name="permissions[]" value="<?= e($permission['id']) ?>" <?= in_array($permission['id'], $assigned, true) ? 'checked' : '' ?>>
-                        <code><?= e($permission['name']) ?></code>
-                        <span class="muted" style="margin-left: 0.5rem; font-size: 0.8rem;">(<?= e($permission['description']) ?>)</span>
-                    </label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label style="margin: 0;">Permissões de Acesso</label>
+                <span class="muted" style="font-size: 0.8rem;">Clique em <strong>Ver tela ↗</strong> para inspecionar a rota prática</span>
+            </div>
+            <div class="checkbox-group" style="max-height: 320px; padding: 0.5rem;">
+                <?php foreach ($permissions as $permission): 
+                    $targetPath = $app->permissions->resolveRoute($permission['id'], $app);
+                    $targetUrl = $targetPath ? url($app, $targetPath) : null;
+                    $desc = $app->permissions->friendlyDescription($permission['id'], $permission['description'] ?? '', $app);
+                ?>
+                    <div class="permission-item">
+                        <label>
+                            <input type="checkbox" name="permissions[]" value="<?= e($permission['id']) ?>" <?= in_array($permission['id'], $assigned, true) ? 'checked' : '' ?>>
+                            <code><?= e($permission['name']) ?></code>
+                            <span class="muted" style="font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= e($desc) ?>">
+                                (<?= e($desc) ?>)
+                            </span>
+                        </label>
+                        <?php if ($targetUrl): ?>
+                            <a href="<?= e($targetUrl) ?>" 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               title="Abrir rota prática em nova aba: <?= e($targetPath) ?>" 
+                               class="permission-preview-btn">
+                                <span>Ver tela</span>
+                                <span style="font-size: 0.85em;">↗</span>
+                            </a>
+                        <?php endif; ?>
+                    </div>
                 <?php endforeach; ?>
             </div>
         </div>
